@@ -1,54 +1,557 @@
+# ==========================================================
+# DEEP EMOTIONS — DATABASE
+# SQLite Database
+# ==========================================================
+
 from pathlib import Path
+
 import aiosqlite
+
+
+# ==========================================================
+# DATABASE PATH
+# ==========================================================
 
 DB_PATH = Path("data/deep_emotions.db")
 
+
+# ==========================================================
+# DATABASE INITIALIZATION
+# ==========================================================
+
 async def init_db():
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    """
+    Create database directory and all required tables.
+    """
+
+    DB_PATH.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("""
+
+        # --------------------------------------------------
+        # Personal Conversation History
+        # --------------------------------------------------
+
+        await db.execute(
+            """
             CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 chat_id INTEGER NOT NULL,
                 user_id INTEGER NOT NULL,
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at DATETIME
+                    DEFAULT CURRENT_TIMESTAMP
             )
-        """)
-        await db.commit()
+            """
+        )
 
-async def add_message(chat_id, user_id, role, content):
-    async with aiosqlite.connect(DB_PATH) as db:
+        # --------------------------------------------------
+        # Long-Term Memories
+        # --------------------------------------------------
+
         await db.execute(
-            "INSERT INTO messages(chat_id,user_id,role,content) VALUES(?,?,?,?)",
-            (chat_id, user_id, role, content),
+            """
+            CREATE TABLE IF NOT EXISTS memories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                memory TEXT NOT NULL,
+                created_at DATETIME
+                    DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME
+                    DEFAULT CURRENT_TIMESTAMP
+            )
+            """
         )
-        await db.commit()
 
-async def get_history(chat_id, user_id, limit=12):
-    async with aiosqlite.connect(DB_PATH) as db:
-        cur = await db.execute(
-            "SELECT role, content FROM messages "
-            "WHERE chat_id=? AND user_id=? ORDER BY id DESC LIMIT ?",
-            (chat_id, user_id, limit),
-        )
-        rows = await cur.fetchall()
-    return list(reversed(rows))
+        # --------------------------------------------------
+        # Group Conversation Context
+        # --------------------------------------------------
 
-async def clear_history(chat_id, user_id):
-    async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            "DELETE FROM messages WHERE chat_id=? AND user_id=?",
-            (chat_id, user_id),
+            """
+            CREATE TABLE IF NOT EXISTS group_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                username TEXT,
+                display_name TEXT,
+                content TEXT NOT NULL,
+                created_at DATETIME
+                    DEFAULT CURRENT_TIMESTAMP
+            )
+            """
         )
+
+        # --------------------------------------------------
+        # Indexes
+        # --------------------------------------------------
+
+        await db.execute(
+            """
+            CREATE INDEX IF NOT EXISTS
+            idx_messages_chat_user
+            ON messages(chat_id, user_id, id)
+            """
+        )
+
+        await db.execute(
+            """
+            CREATE INDEX IF NOT EXISTS
+            idx_memories_user
+            ON memories(user_id, id)
+            """
+        )
+
+        await db.execute(
+            """
+            CREATE INDEX IF NOT EXISTS
+            idx_group_messages_chat
+            ON group_messages(chat_id, id)
+            """
+        )
+
         await db.commit()
 
-async def count_messages(chat_id, user_id):
+
+# ==========================================================
+# PERSONAL MESSAGE HISTORY
+# ==========================================================
+
+async def add_message(
+    chat_id,
+    user_id,
+    role,
+    content,
+):
+    """
+    Save one message to conversation history.
+    """
+
+    if not content:
+        return
+
     async with aiosqlite.connect(DB_PATH) as db:
-        cur = await db.execute(
-            "SELECT COUNT(*) FROM messages WHERE chat_id=? AND user_id=?",
-            (chat_id, user_id),
+
+        await db.execute(
+            """
+            INSERT INTO messages(
+                chat_id,
+                user_id,
+                role,
+                content
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                chat_id,
+                user_id,
+                role,
+                content,
+            ),
         )
-        row = await cur.fetchone()
+
+        await db.commit()
+
+
+async def get_history(
+    chat_id,
+    user_id,
+    limit=12,
+):
+    """
+    Get latest conversation messages.
+    """
+
+    async with aiosqlite.connect(DB_PATH) as db:
+
+        cursor = await db.execute(
+            """
+            SELECT role, content
+            FROM messages
+            WHERE chat_id = ?
+            AND user_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (
+                chat_id,
+                user_id,
+                limit,
+            ),
+        )
+
+        rows = await cursor.fetchall()
+
+    return list(
+        reversed(rows)
+    )
+
+
+async def clear_history(
+    chat_id,
+    user_id,
+):
+    """
+    Delete conversation history
+    for one user in one chat.
+    """
+
+    async with aiosqlite.connect(DB_PATH) as db:
+
+        await db.execute(
+            """
+            DELETE FROM messages
+            WHERE chat_id = ?
+            AND user_id = ?
+            """,
+            (
+                chat_id,
+                user_id,
+            ),
+        )
+
+        await db.commit()
+
+
+async def count_messages(
+    chat_id,
+    user_id,
+):
+    """
+    Count saved conversation messages.
+    """
+
+    async with aiosqlite.connect(DB_PATH) as db:
+
+        cursor = await db.execute(
+            """
+            SELECT COUNT(*)
+            FROM messages
+            WHERE chat_id = ?
+            AND user_id = ?
+            """,
+            (
+                chat_id,
+                user_id,
+            ),
+        )
+
+        row = await cursor.fetchone()
+
+    return row[0]
+
+
+# ==========================================================
+# LONG-TERM MEMORY
+# ==========================================================
+
+async def add_memory(
+    user_id,
+    memory,
+):
+    """
+    Save a long-term memory.
+
+    Duplicate memories are ignored.
+    """
+
+    if not memory:
+        return False
+
+    memory = memory.strip()
+
+    if not memory:
+        return False
+
+    async with aiosqlite.connect(DB_PATH) as db:
+
+        cursor = await db.execute(
+            """
+            SELECT id
+            FROM memories
+            WHERE user_id = ?
+            AND LOWER(memory) = LOWER(?)
+            LIMIT 1
+            """,
+            (
+                user_id,
+                memory,
+            ),
+        )
+
+        existing = await cursor.fetchone()
+
+        if existing:
+            return False
+
+        await db.execute(
+            """
+            INSERT INTO memories(
+                user_id,
+                memory
+            )
+            VALUES (?, ?)
+            """,
+            (
+                user_id,
+                memory,
+            ),
+        )
+
+        await db.commit()
+
+    return True
+
+
+async def get_memories(
+    user_id,
+    limit=30,
+):
+    """
+    Get latest long-term memories.
+    """
+
+    async with aiosqlite.connect(DB_PATH) as db:
+
+        cursor = await db.execute(
+            """
+            SELECT id, memory
+            FROM memories
+            WHERE user_id = ?
+            ORDER BY updated_at DESC, id DESC
+            LIMIT ?
+            """,
+            (
+                user_id,
+                limit,
+            ),
+        )
+
+        rows = await cursor.fetchall()
+
+    return rows
+
+
+async def delete_memory(
+    user_id,
+    memory_id,
+):
+    """
+    Delete one specific memory.
+    """
+
+    async with aiosqlite.connect(DB_PATH) as db:
+
+        cursor = await db.execute(
+            """
+            DELETE FROM memories
+            WHERE id = ?
+            AND user_id = ?
+            """,
+            (
+                memory_id,
+                user_id,
+            ),
+        )
+
+        await db.commit()
+
+    return cursor.rowcount > 0
+
+
+async def clear_memories(
+    user_id,
+):
+    """
+    Delete all memories for one user.
+    """
+
+    async with aiosqlite.connect(DB_PATH) as db:
+
+        await db.execute(
+            """
+            DELETE FROM memories
+            WHERE user_id = ?
+            """,
+            (user_id,),
+        )
+
+        await db.commit()
+
+
+async def count_memories(
+    user_id,
+):
+    """
+    Count user's saved memories.
+    """
+
+    async with aiosqlite.connect(DB_PATH) as db:
+
+        cursor = await db.execute(
+            """
+            SELECT COUNT(*)
+            FROM memories
+            WHERE user_id = ?
+            """,
+            (user_id,),
+        )
+
+        row = await cursor.fetchone()
+
+    return row[0]
+
+
+# ==========================================================
+# GROUP CONVERSATION CONTEXT
+# ==========================================================
+
+async def add_group_message(
+    chat_id,
+    user_id,
+    username,
+    display_name,
+    content,
+):
+    """
+    Save a group message.
+
+    Group context is completely separate
+    from personal long-term memory.
+    """
+
+    if not content:
+        return
+
+    content = content.strip()
+
+    if not content:
+        return
+
+    async with aiosqlite.connect(DB_PATH) as db:
+
+        await db.execute(
+            """
+            INSERT INTO group_messages(
+                chat_id,
+                user_id,
+                username,
+                display_name,
+                content
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                chat_id,
+                user_id,
+                username,
+                display_name,
+                content,
+            ),
+        )
+
+        # --------------------------------------------------
+        # Keep latest 100 messages per group
+        # --------------------------------------------------
+
+        await db.execute(
+            """
+            DELETE FROM group_messages
+            WHERE chat_id = ?
+            AND id NOT IN (
+                SELECT id
+                FROM group_messages
+                WHERE chat_id = ?
+                ORDER BY id DESC
+                LIMIT 100
+            )
+            """,
+            (
+                chat_id,
+                chat_id,
+            ),
+        )
+
+        await db.commit()
+
+
+async def get_group_context(
+    chat_id,
+    limit=15,
+):
+    """
+    Get latest group messages.
+    """
+
+    async with aiosqlite.connect(DB_PATH) as db:
+
+        cursor = await db.execute(
+            """
+            SELECT
+                user_id,
+                username,
+                display_name,
+                content
+            FROM group_messages
+            WHERE chat_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (
+                chat_id,
+                limit,
+            ),
+        )
+
+        rows = await cursor.fetchall()
+
+    return list(
+        reversed(rows)
+    )
+
+
+async def clear_group_context(
+    chat_id,
+):
+    """
+    Delete stored group context.
+    """
+
+    async with aiosqlite.connect(DB_PATH) as db:
+
+        await db.execute(
+            """
+            DELETE FROM group_messages
+            WHERE chat_id = ?
+            """,
+            (chat_id,),
+        )
+
+        await db.commit()
+
+
+async def count_group_messages(
+    chat_id,
+):
+    """
+    Count stored group context messages.
+    """
+
+    async with aiosqlite.connect(DB_PATH) as db:
+
+        cursor = await db.execute(
+            """
+            SELECT COUNT(*)
+            FROM group_messages
+            WHERE chat_id = ?
+            """,
+            (chat_id,),
+        )
+
+        row = await cursor.fetchone()
+
     return row[0]

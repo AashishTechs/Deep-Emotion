@@ -9,12 +9,14 @@ from telegram.ext import (
     Application,
     CommandHandler,
     MessageHandler,
-    ContextTypes,
+    CallbackQueryHandler,
     filters,
 )
 
 from config import BOT_TOKEN
+
 from bot.database import init_db
+
 from bot.handlers import (
     start,
     help_command,
@@ -22,6 +24,15 @@ from bot.handlers import (
     clear_memory,
     stats,
     chat_message,
+    memory_command,
+    forget_memory,
+    forget_all,
+    welcome_new_member,
+    goodbye_member,
+    moderate_message,
+    button_handler,
+    voice_message,
+    privacy_command,
 )
 
 
@@ -38,17 +49,20 @@ logger = logging.getLogger(__name__)
 
 
 # ==========================================================
-# RENDER HEALTH CHECK SERVER
+# RENDER HEALTH SERVER
 # ==========================================================
 
 class HealthHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
+
         self.send_response(200)
+
         self.send_header(
             "Content-Type",
-            "text/plain; charset=utf-8"
+            "text/plain; charset=utf-8",
         )
+
         self.end_headers()
 
         self.wfile.write(
@@ -60,6 +74,7 @@ class HealthHandler(BaseHTTPRequestHandler):
 
 
 def start_health_server():
+
     port = int(
         os.environ.get("PORT", 10000)
     )
@@ -77,66 +92,215 @@ def start_health_server():
 
 
 # ==========================================================
-# BOT MAIN
+# MAIN BOT
 # ==========================================================
 
 async def main():
 
-    # Initialize database
+    # ------------------------------------------------------
+    # INITIALIZE DATABASE
+    # ------------------------------------------------------
+
     await init_db()
 
-    # Create Telegram application
+    # ------------------------------------------------------
+    # CREATE TELEGRAM APPLICATION
+    # ------------------------------------------------------
+
     application = (
-        Application.builder()
+        Application
+        .builder()
         .token(BOT_TOKEN)
         .build()
     )
 
-    # Commands
+    # ======================================================
+    # COMMAND HANDLERS
+    # ======================================================
+
     application.add_handler(
-        CommandHandler("start", start)
+        CommandHandler(
+            "start",
+            start,
+        )
     )
 
     application.add_handler(
-        CommandHandler("help", help_command)
+        CommandHandler(
+            "help",
+            help_command,
+        )
     )
 
     application.add_handler(
-        CommandHandler("ask", ask)
+        CommandHandler(
+            "ask",
+            ask,
+        )
     )
 
     application.add_handler(
-        CommandHandler("clear", clear_memory)
+        CommandHandler(
+            "memory",
+            memory_command,
+        )
     )
 
     application.add_handler(
-        CommandHandler("stats", stats)
+        CommandHandler(
+            "forget",
+            forget_memory,
+        )
     )
 
-    # Normal text messages
+    application.add_handler(
+        CommandHandler(
+            "forget_all",
+            forget_all,
+        )
+    )
+
+    application.add_handler(
+        CommandHandler(
+            "clear",
+            clear_memory,
+        )
+    )
+
+    application.add_handler(
+        CommandHandler(
+            "stats",
+            stats,
+        )
+    )
+
+    application.add_handler(
+        CommandHandler(
+            "privacy",
+            privacy_command,
+        )
+    )
+
+    # ======================================================
+    # INLINE BUTTONS
+    # ======================================================
+
+    application.add_handler(
+        CallbackQueryHandler(
+            button_handler
+        )
+    )
+
+    # ======================================================
+    # WELCOME NEW MEMBERS
+    # ======================================================
+
+    application.add_handler(
+        MessageHandler(
+            filters.StatusUpdate.NEW_CHAT_MEMBERS,
+            welcome_new_member,
+        )
+    )
+
+    # ======================================================
+    # GOODBYE MEMBERS
+    # ======================================================
+
+    application.add_handler(
+        MessageHandler(
+            filters.StatusUpdate.LEFT_CHAT_MEMBER,
+            goodbye_member,
+        )
+    )
+
+    # ======================================================
+    # STEP 7 — VOICE AI
+    # ======================================================
+    #
+    # Voice message
+    #       ↓
+    # voice_message()
+    #       ↓
+    # Gemini transcription
+    #       ↓
+    # AI response
+    #
+
+    application.add_handler(
+        MessageHandler(
+            filters.VOICE,
+            voice_message,
+        ),
+        group=0,
+    )
+
+    # ======================================================
+    # STEP 4 — ANTI SPAM
+    # ======================================================
+    #
+    # Handles:
+    # - Flood spam
+    # - Links
+    # - Warnings
+    # - Temporary mute
+    #
+
+    application.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            moderate_message,
+        ),
+        group=1,
+    )
+
+    # ======================================================
+    # AI CHAT
+    # ======================================================
+    #
+    # Normal text
+    #       ↓
+    # chat_message()
+    #       ↓
+    # Memory / Group Context
+    #       ↓
+    # Gemini
+    #       ↓
+    # Response
+    #
+
     application.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
             chat_message,
-        )
+        ),
+        group=2,
     )
+
+    # ======================================================
+    # START BOT
+    # ======================================================
 
     logger.info(
         "Deep Emotions is running..."
     )
 
-    # Start Telegram application
     await application.initialize()
+
     await application.start()
 
-    # Start polling
     await application.updater.start_polling(
         allowed_updates=Update.ALL_TYPES
     )
 
-    # Keep bot alive
+    # ======================================================
+    # KEEP BOT RUNNING
+    # ======================================================
+
     while True:
-        await asyncio.sleep(3600)
+
+        await asyncio.sleep(
+            3600
+        )
 
 
 # ==========================================================
@@ -145,7 +309,6 @@ async def main():
 
 if __name__ == "__main__":
 
-    # Start Render health server
     health_thread = Thread(
         target=start_health_server,
         daemon=True,
@@ -153,17 +316,22 @@ if __name__ == "__main__":
 
     health_thread.start()
 
-    # Start Telegram bot
     try:
-        asyncio.run(main())
+
+        asyncio.run(
+            main()
+        )
 
     except KeyboardInterrupt:
+
         logger.info(
             "Deep Emotions stopped."
         )
 
     except Exception:
+
         logger.exception(
             "Bot crashed."
         )
+
         raise

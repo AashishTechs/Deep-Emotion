@@ -1,24 +1,44 @@
 # 𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴs
 
-Telegram + Gemini AI chatbot.
+Telegram + Gemini AI chatbot with long-term memory,
+group conversation context, AI tools, voice support,
+privacy controls and basic moderation.
 
-## Install
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
+## ✨ Features
 
-## Configure
-Copy `.env.example` to `.env` and add your own:
-BOT_TOKEN
-GEMINI_API_KEY
-OWNER_ID (optional)
+- 🤖 Gemini AI conversations
+- 🧠 Long-term personal memory
+- 💬 Group conversation context
+- 👋 Welcome and goodbye messages
+- 🛡️ Basic anti-spam moderation
+- 🛠️ AI tools
+  - Rewrite
+  - Summarize
+  - Translate
+  - Explain
+  - Study Help
+- 🎙️ Voice message transcription
+- 🔒 Privacy and memory controls
+- 📊 User statistics
+- ⚡ Rate limiting
+- 🌐 Render health server support
 
-Never share `.env`.
+## 📁 Project Structure
 
-## Run
-python main.py
-
-Groups: mention the bot or reply to its message.
-Private chat: normal text works.
-
-For 24/7 operation, deploy it later to an always-on VPS/cloud server.
+```text
+TelegramAIBot/
+├── .env
+├── .env.example
+├── .gitignore
+├── config.py
+├── main.py
+├── requirements.txt
+├── README.md
+├── data/
+│   └── deep_emotions.db
+├── bot/
+│   ├── __init__.py
+│   ├── ai.py
+│   ├── database.py
+│   └── handlers.py
+└── .venv/
