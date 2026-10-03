@@ -401,16 +401,18 @@ HELP_SECTION_TEXT = {
     ),
     "help_commands": (
         "📖 **Commands**\n\n"
-        "/start — welcome panel\n"
-        "/help — help center\n"
-        "/ask — ask AI\n"
-        "/game — social game\n"
-        "/memory — saved memories\n"
-        "/forget — delete one memory\n"
-        "/forget_all — delete all memories\n"
-        "/clear — clear chat history\n"
-        "/stats — statistics\n"
-        "/privacy — privacy"
+        "/start — Welcome panel\n"
+        "/help — Help & Commands\n"
+        "/ask <question> — Ask AI\n"
+        "/game <truth|dare|wyr|joke> — Play a game\n"
+        "/memory — View saved memories\n"
+        "/forget <ID> — Delete one memory\n"
+        "/forget_all — Delete all memories\n"
+        "/clear — Clear chat history\n"
+        "/stats — View your stats\n"
+        "/privacy — Privacy information\n\n"
+        "💡 Tip: /ask ke baad apna question likho.\n"
+        "Example: /ask Python kya hai?"
     ),
 }
 
