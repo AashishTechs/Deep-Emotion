@@ -657,6 +657,8 @@ async def transcribe_voice(
     using Gemini audio understanding.
     """
 
+    audio_file = None
+
     try:
 
         # --------------------------------------------------
