@@ -479,14 +479,12 @@ async def start(
 
     text = (
         "✨ **Hey, I'm Deep Emotions 💗**\n\n"
-        "Not your average bot — I remember useful things, "
-        "talk naturally, and stay with the conversation. 🌸\n\n"
-        "🧠 I remember useful details from our private chats.\n"
-        "💬 I talk naturally and can help with everyday questions.\n"
-        "🔔 I can also reply in groups and react to conversations.\n\n"
-        "🎮 Games • 🛠️ AI Tools • 🎙️ Voice AI • 📊 Stats\n\n"
-        "Tap **Chat With Me** to start, or add me to your group 👇\n\n"
-        "Updates: @deep_emotions_01"
+        "Your friendly AI companion for chat, memory, games and everyday help. 🌸\n\n"
+        "🧠 Smart Memory • 💬 Natural Chat\n"
+        "🎮 Games • 🛠️ AI Tools • 🎙️ Voice AI\n"
+        "🎙️ Voice AI • 👥 Group Conversations • 📊 Stats\n\n"
+        "Choose an option below and let's get started. 👇\n\n"
+        "🔔 Updates: @deep_emotions_01"
     )
 
     await update.message.reply_photo(
@@ -1440,11 +1438,11 @@ async def button_handler(
 
         text = (
             "✨ **Hey, I'm Deep Emotions 💗**\n\n"
-            "Not your average bot — I remember useful things, "
-            "talk naturally, and stay with the conversation. 🌸\n\n"
-            "🧠 Memory • 💬 Chat • 🎮 Games • 🛠️ AI Tools • 🎙️ Voice AI\n\n"
-            "Tap an option below to continue.\n\n"
-            "Updates: @deep_emotions_01"
+            "Your friendly AI companion for chat, memory, games and everyday help. 🌸\n\n"
+            "🧠 Smart Memory • 💬 Natural Chat\n"
+            "🎮 Games • 🛠️ AI Tools • 🎙️ Voice AI\n\n"
+            "Choose an option below and let's get started. 👇\n\n"
+            "🔔 Updates: @deep_emotions_01"
         )
 
         try:
@@ -1474,6 +1472,21 @@ async def button_handler(
             "🔵 Voice, Groups & Privacy\n"
             "🟢 Games, Stats & Commands",
             help_menu_keyboard(),
+        )
+        return
+
+    if data == "help_commands":
+        await edit_panel(
+            HELP_SECTION_TEXT["help_commands"],
+            InlineKeyboardMarkup(
+                [[
+                    _btn(
+                        "🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ",
+                        callback_data="help_main",
+                        style="primary",
+                    )
+                ]]
+            ),
         )
         return
 
