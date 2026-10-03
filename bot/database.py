@@ -207,6 +207,67 @@ async def cleanup_old_data(db=None):
 
 
 # ==========================================================
+# PROACTIVE GROUP STATE
+# ==========================================================
+
+async def init_proactive_state_table(db=None):
+    owns_connection = db is None
+    if owns_connection:
+        db = await aiosqlite.connect(DB_PATH)
+    try:
+        await db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS proactive_state (
+                chat_id INTEGER PRIMARY KEY,
+                period TEXT,
+                greeting_date TEXT,
+                last_sent_at REAL DEFAULT 0,
+                next_due REAL DEFAULT 0
+            )
+            """
+        )
+        if owns_connection:
+            await db.commit()
+    finally:
+        if owns_connection:
+            await db.close()
+
+
+async def get_proactive_state(chat_id):
+    await init_proactive_state_table()
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            """
+            SELECT period, greeting_date, last_sent_at, next_due
+            FROM proactive_state
+            WHERE chat_id = ?
+            """,
+            (chat_id,),
+        )
+        return await cursor.fetchone()
+
+
+async def set_proactive_state(chat_id, period, greeting_date, last_sent_at, next_due):
+    await init_proactive_state_table()
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """
+            INSERT INTO proactive_state(
+                chat_id, period, greeting_date, last_sent_at, next_due
+            )
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(chat_id) DO UPDATE SET
+                period = excluded.period,
+                greeting_date = excluded.greeting_date,
+                last_sent_at = excluded.last_sent_at,
+                next_due = excluded.next_due
+            """,
+            (chat_id, period, greeting_date, last_sent_at, next_due),
+        )
+        await db.commit()
+
+
+# ==========================================================
 # PERSONAL MESSAGE HISTORY
 # ==========================================================
 
