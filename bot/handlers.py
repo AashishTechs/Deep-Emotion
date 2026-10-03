@@ -497,8 +497,7 @@ async def help_command(
 # ==========================================================
 
 async def privacy_command(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
+    update: Update,    context: ContextTypes.DEFAULT_TYPE,
 ):
 
     if not update.message:
@@ -592,6 +591,7 @@ async def ask(
     await process_ai(
         update,
         text,
+        context,
     )
 
 
@@ -948,6 +948,7 @@ async def chat_message(
 
         await process_ai_tool(
             update,
+            context,
             selected_tool,
             text,
         )
@@ -970,6 +971,7 @@ async def chat_message(
 
 async def process_ai_tool(
     update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
     tool: str,
     text: str,
 ):
@@ -997,7 +999,6 @@ async def process_ai_tool(
             tool,
             text,
         )
-
         await send_text_with_user_mentions(
             update,
             context,
@@ -1024,6 +1025,7 @@ async def process_ai_tool(
 async def process_ai(
     update,
     text,
+    context: ContextTypes.DEFAULT_TYPE = None,
 ):
 
     user = update.effective_user
@@ -1167,9 +1169,14 @@ async def process_ai(
         # Send reply
         # --------------------------------------------------
 
-        await update.message.reply_text(
-            reply
-        )
+        if context is not None:
+            await send_text_with_user_mentions(
+                update,
+                context,
+                reply,
+            )
+        else:
+            await update.message.reply_text(reply)
 
     except Exception as exc:
 
@@ -1497,8 +1504,7 @@ async def button_handler(
 
         await query.edit_message_text(
             f"{title}\n\n"
-            f"{instruction}\n\n"
-            "🔙 Cancel karne ke liye "
+            f"{instruction}\n\n"            "🔙 Cancel karne ke liye "
             "Back dabao.",
             parse_mode="Markdown",
             reply_markup=back_button(),
