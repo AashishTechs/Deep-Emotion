@@ -13,6 +13,7 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     ChatPermissions,
+    MessageEntity,
 )
 
 from telegram.constants import ChatAction
@@ -997,8 +998,10 @@ async def process_ai_tool(
             text,
         )
 
-        await update.message.reply_text(
-            reply
+        await send_text_with_user_mentions(
+            update,
+            context,
+            reply,
         )
 
     except Exception as exc:
@@ -1182,6 +1185,80 @@ async def process_ai(
 
 
 # ==========================================================
+# TELEGRAM USER MENTION
+# ==========================================================
+
+async def send_text_with_user_mentions(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    text: str,
+):
+    """
+    Convert AI-generated tg://user HTML mentions into native
+    Telegram text_mention entities. No HTML is shown to users.
+    """
+    pattern = re.compile(
+        r'<a\s+href=["\']tg://user\?id=(\d+)["\']>(.*?)</a>',
+        re.IGNORECASE | re.DOTALL,
+    )
+
+    parts = []
+    entities = []
+    last_end = 0
+
+    for match in pattern.finditer(text):
+        user_id = int(match.group(1))
+        name = re.sub(r"<[^>]+>", "", match.group(2)).strip()
+
+        try:
+            member = await context.bot.get_chat_member(
+                update.effective_chat.id,
+                user_id,
+            )
+            mentioned_user = member.user
+        except Exception:
+            mentioned_user = None
+
+        if not mentioned_user:
+            continue
+
+        parts.append(text[last_end:match.start()])
+        clean_text_so_far = "".join(parts)
+        mention_offset = len(clean_text_so_far.encode("utf-16-le")) // 2
+        parts.append(name)
+        mention_length = len(name.encode("utf-16-le")) // 2
+
+        entities.append(
+            MessageEntity(
+                type=MessageEntity.TEXT_MENTION,
+                offset=mention_offset,
+                length=mention_length,
+                user=mentioned_user,
+            )
+        )
+
+        last_end = match.end()
+
+    parts.append(text[last_end:])
+    clean_text = "".join(parts)
+
+    if not entities:
+        clean_text = re.sub(
+            r'<a\s+href=["\']tg://user\?id=\d+["\']>(.*?)</a>',
+            lambda m: re.sub(r"<[^>]+>", "", m.group(1)),
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        await update.message.reply_text(clean_text)
+        return
+
+    await update.message.reply_text(
+        clean_text,
+        entities=entities,
+    )
+
+
+# ==========================================================
 # WELCOME
 # ==========================================================
 
@@ -1211,31 +1288,27 @@ async def welcome_new_member(
             or "Friend"
         )
 
-        if member.username:
-
-            mention = (
-                f"@{member.username}"
-            )
-
-        else:
-
-            mention = (
-                f"[{name}]"
-                f"(tg://user?id={member.id})"
-            )
-
         welcome_text = (
-            f"👋 **Welcome {mention}!**\n\n"
-            f"💜 Welcome to "
-            f"**{chat.title or 'our group'}**!\n"
+            f"👋 Welcome {name}!\n\n"
+            f"💜 Welcome to {chat.title or 'our group'}!\n"
             f"✨ Glad to have you here.\n\n"
             f"💬 Feel free to chat with everyone "
             f"and enjoy your time here! 🌸"
         )
 
+        name_offset = len("👋 Welcome ".encode("utf-16-le")) // 2
+        name_length = len(name.encode("utf-16-le")) // 2
+
         await update.message.reply_text(
             welcome_text,
-            parse_mode="Markdown",
+            entities=[
+                MessageEntity(
+                    type=MessageEntity.TEXT_MENTION,
+                    offset=name_offset,
+                    length=name_length,
+                    user=member,
+                )
+            ],
         )
 
 
@@ -1269,28 +1342,25 @@ async def goodbye_member(
         or "Friend"
     )
 
-    if member.username:
-
-        mention = (
-            f"@{member.username}"
-        )
-
-    else:
-
-        mention = (
-            f"[{name}]"
-            f"(tg://user?id={member.id})"
-        )
-
     goodbye_text = (
-        f"👋 {mention} has left the group.\n\n"
+        f"👋 {name} has left the group.\n\n"
         f"💔 We'll miss you!\n"
         f"Take care and have a great day. 🌸"
     )
 
+    name_offset = len("👋 ".encode("utf-16-le")) // 2
+    name_length = len(name.encode("utf-16-le")) // 2
+
     await update.message.reply_text(
         goodbye_text,
-        parse_mode="Markdown",
+        entities=[
+            MessageEntity(
+                type=MessageEntity.TEXT_MENTION,
+                offset=name_offset,
+                length=name_length,
+                user=member,
+            )
+        ],
     )
 
 
