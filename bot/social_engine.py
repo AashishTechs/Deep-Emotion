@@ -46,15 +46,24 @@ def analyze_message(text):
     }
 
 
-def should_reply_group(chat_id, text, mentioned=False, replied_to_bot=False):
+def should_reply_group(
+    chat_id,
+    text,
+    mentioned=False,
+    replied_to_bot=False,
+    other_user_mentioned=False,
+):
     """
-    Reply to every normal text message in a group.
+    Reply to normal group messages, bot mentions, and replies to the bot.
 
-    Direct mentions/replies also always get a response.
-    Spam protection is handled separately by the moderation handler.
+    If a message explicitly mentions another user (but not the bot),
+    treat it as a direct conversation between users and stay silent.
     """
     if mentioned or replied_to_bot:
         return True
+
+    if other_user_mentioned:
+        return False
 
     return True
 
