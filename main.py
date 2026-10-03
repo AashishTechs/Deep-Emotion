@@ -11,7 +11,6 @@ from telegram.ext import (
     MessageHandler,
     CallbackQueryHandler,
     filters,
-    ApplicationHandlerStop,
 )
 
 from config import BOT_TOKEN
