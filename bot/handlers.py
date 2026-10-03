@@ -56,6 +56,10 @@ user_requests = defaultdict(deque)
 WINDOW_SECONDS = 20
 MAX_REQUESTS = 5
 
+# Reply to normal group messages without requiring a mention/reply.
+# Change to False for mention/reply-only group behavior.
+GROUP_REPLY_ALWAYS = True
+
 
 def allowed(user_id):
 
@@ -869,6 +873,7 @@ async def chat_message(
 
     if (
         chat.type != "private"
+        and not GROUP_REPLY_ALWAYS
         and not (
             mentioned
             or replied_to_bot
@@ -1797,126 +1802,4 @@ async def voice_message(
             group_context = await get_group_context(
                 chat.id,
                 limit=15,
-            )
-
-        # --------------------------------------------------
-        # SAVE USER MESSAGE
-        # ------------------------------------------------------
-
-        await add_message(
-            chat.id,
-            user.id,
-            "user",
-            transcribed_text,
-        )
-
-        # --------------------------------------------------
-        # GENERATE AI RESPONSE
-        # ------------------------------------------------------
-
-        response = await generate_reply(
-            history=history,
-            user_message=transcribed_text,
-            memories=memories,
-            group_context=group_context,
-            is_group=is_group,
-        )
-
-        # --------------------------------------------------
-        # SAVE AI RESPONSE
-        # ------------------------------------------------------
-
-        await add_message(
-            chat.id,
-            user.id,
-            "model",
-            response,
-        )
-
-        # --------------------------------------------------
-        # PERSONAL MEMORY EXTRACTION
-        # ------------------------------------------------------
-        #
-        # Group voice messages do NOT create personal memory.
-        #
-
-        if not is_group:
-
-            try:
-
-                new_memories = (
-                    await extract_memories(
-                        transcribed_text
-                    )
-                )
-
-                for memory in new_memories:
-
-                    saved = await add_memory(
-                        user.id,
-                        memory,
-                    )
-
-                    if saved:
-
-                        print(
-                            f"New voice memory saved "
-                            f"for user {user.id}: "
-                            f"{memory}"
-                        )
-
-            except Exception as memory_error:
-
-                print(
-                    "Voice memory extraction error:",
-                    repr(memory_error),
-                )
-
-        # --------------------------------------------------
-        # SEND RESPONSE
-        # --------------------------------------------------
-
-        await status_message.edit_text(
-            f"🎙️ **You said:**\n"
-            f"_{transcribed_text}_\n\n"
-            f"💜 **𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴs:**\n"
-            f"{response}",
-            parse_mode="Markdown",
-        )
-
-    except Exception as exc:
-
-        print(
-            "Voice handler error:",
-            repr(exc),
-        )
-
-        try:
-
-            await status_message.edit_text(
-                "❌ Voice process karte waqt "
-                "error aa gaya.\n\n"
-                "Please thodi der baad try karo."
-            )
-
-        except Exception:
-            pass
-
-    finally:
-
-        # --------------------------------------------------
-        # DELETE TEMP FILE
-        # --------------------------------------------------
-
-        try:
-
-            if voice_file_path.exists():
-
-                voice_file_path.unlink()
-
-        except Exception as cleanup_error:
-
-            print(
-                "Voice cleanup error:",
-                repr(cleanup_error),
             )
