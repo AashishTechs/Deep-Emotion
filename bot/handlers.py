@@ -428,13 +428,13 @@ def help_section_keyboard(section):
 # ==========================================================
 
 def back_button():
-
     return InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton(
-                    "🔙 Back",
-                    callback_data="back",
+                _btn(
+                    "🔙 ʙᴀᴄᴋ",
+                    callback_data="home",
+                    style="danger",
                 )
             ]
         ]
