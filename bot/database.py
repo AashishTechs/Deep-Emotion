@@ -168,21 +168,6 @@ async def cleanup_old_data(db=None):
             (f"-{MEMORY_RETENTION_DAYS} days",),
         )
 
-        await db.execute(
-            """
-            DELETE FROM memories
-            WHERE id NOT IN (
-                SELECT id
-                FROM memories
-                ORDER BY user_id, updated_at DESC, id DESC
-            )
-            AND user_id IN (
-                SELECT user_id
-                FROM memories
-            )
-            """
-        )
-
         # Keep only the latest MAX_MEMORIES_PER_USER memories
         # for each user.
         cursor = await db.execute(
