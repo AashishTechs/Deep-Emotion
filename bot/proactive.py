@@ -3,6 +3,7 @@
 # ==========================================================
 
 import asyncio
+import html
 import random
 import time
 from datetime import datetime
@@ -15,6 +16,7 @@ from bot.database import get_active_groups, get_active_group_users, get_group_co
 
 MIN_INTERVAL = 20 * 60
 MAX_INTERVAL = 45 * 60
+_next_due = {}
 _last_sent = {}
 
 
@@ -22,6 +24,7 @@ def _mention(user_id, username, display_name):
     if username:
         return username
     name = (display_name or "you").replace("[", "").replace("]", "")
+    name = html.escape(name)
     return f'<a href="tg://user?id={user_id}">{name}</a>'
 
 
@@ -76,10 +79,8 @@ async def proactive_group_loop(bot: Bot):
             groups = await get_active_groups()
             now = time.monotonic()
             for chat_id in groups:
-                last = _last_sent.get(chat_id, 0)
-                if now - last < MIN_INTERVAL:
-                    continue
-                if random.random() > 0.30:
+                due = _next_due.get(chat_id, 0)
+                if now < due:
                     continue
 
                 members = await get_active_group_users(chat_id)
