@@ -497,8 +497,7 @@ async def help_command(
 # ==========================================================
 
 async def privacy_command(
-    update: Update,    context: ContextTypes.DEFAULT_TYPE,
-):
+    update: Update,    context: ContextTypes.DEFAULT_TYPE,):
 
     if not update.message:
         return
@@ -962,6 +961,7 @@ async def chat_message(
     await process_ai(
         update,
         text or "Hi",
+        context,
     )
 
 
@@ -997,8 +997,7 @@ async def process_ai_tool(
 
         reply = await ai_tool(
             tool,
-            text,
-        )
+            text,        )
         await send_text_with_user_mentions(
             update,
             context,
@@ -1209,6 +1208,8 @@ async def send_text_with_user_mentions(
         re.IGNORECASE | re.DOTALL,
     )
 
+    bot = context.bot if hasattr(context, "bot") else context
+
     parts = []
     entities = []
     last_end = 0
@@ -1218,7 +1219,7 @@ async def send_text_with_user_mentions(
         name = re.sub(r"<[^>]+>", "", match.group(2)).strip()
 
         try:
-            member = await context.bot.get_chat_member(
+            member = await bot.get_chat_member(
                 update.effective_chat.id,
                 user_id,
             )
@@ -1497,8 +1498,7 @@ async def button_handler(
 
         pending_ai_tools[
             (
-                query.message.chat.id,
-                query.from_user.id,
+                query.message.chat.id,                query.from_user.id,
             )
         ] = tool_name
 
