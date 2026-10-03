@@ -934,6 +934,12 @@ async def chat_message(
         and update.message.reply_to_message.from_user.id == me.id
     )
 
+    replied_to_other_user = (
+        update.message.reply_to_message is not None
+        and update.message.reply_to_message.from_user is not None
+        and update.message.reply_to_message.from_user.id != me.id
+    )
+
     # Detect mentions of OTHER users. If a message is directed to
     # another user, stay silent unless the bot itself is mentioned/replied to.
     other_user_mentioned = False
