@@ -633,7 +633,7 @@ async def memory_command(
 
     memories = await get_memories(
         user_id,
-        limit=30,
+        limit=10,
     )
 
     if not memories:
@@ -1080,7 +1080,7 @@ async def process_ai(
 
         memories = await get_memories(
             user_id,
-            limit=30,
+            limit=10,
         )
 
     # ------------------------------------------------------
@@ -1446,7 +1446,7 @@ async def button_handler(
 
         memories = await get_memories(
             user_id,
-            limit=30,
+            limit=10,
         )
 
         if not memories:
@@ -1832,7 +1832,7 @@ async def voice_message(
 
             memories = await get_memories(
                 user.id,
-                limit=30,
+                limit=10,
             )
 
         # --------------------------------------------------
