@@ -555,3 +555,41 @@ async def count_group_messages(
         row = await cursor.fetchone()
 
     return row[0]
+
+# ==========================================================
+# ACTIVE GROUPS / MEMBERS FOR PROACTIVE CHAT
+# ==========================================================
+
+async def get_active_groups(limit=100):
+    """Return groups that have recent stored conversation context."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            """
+            SELECT chat_id, MAX(id) AS last_id
+            FROM group_messages
+            GROUP BY chat_id
+            ORDER BY last_id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        rows = await cursor.fetchall()
+    return [row[0] for row in rows]
+
+
+async def get_active_group_users(chat_id, limit=30):
+    """Return recent distinct group participants."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            """
+            SELECT user_id, username, display_name, MAX(id) AS last_id
+            FROM group_messages
+            WHERE chat_id = ?
+            GROUP BY user_id, username, display_name
+            ORDER BY last_id DESC
+            LIMIT ?
+            """,
+            (chat_id, limit),
+        )
+        rows = await cursor.fetchall()
+    return rows
