@@ -91,11 +91,13 @@ async def proactive_group_loop(bot: Bot):
     while True:
         try:
             groups = await get_active_groups()
-            now = time.monotonic()
+            now = time.time()
             for chat_id in groups:
                 state = await get_proactive_state(chat_id)
+                persisted_period = None
+                persisted_date = None
                 if state:
-                    _, _, _, persisted_next_due = state
+                    persisted_period, persisted_date, _, persisted_next_due = state
                     due = persisted_next_due or 0
                 else:
                     due = _next_due.get(chat_id, 0)
@@ -120,6 +122,8 @@ async def proactive_group_loop(bot: Bot):
                     greeting_key = (chat_id, period)
                     if _last_greeting_date.get(greeting_key) == today:
                         continue
+                    if persisted_period == period and persisted_date == today.isoformat():
+                        continue
 
                     message = await _make_message(chat_id, target, context)
                     if message:
@@ -132,17 +136,17 @@ async def proactive_group_loop(bot: Bot):
                             disable_web_page_preview=True,
                         )
                         next_due = now + random.randint(MIN_INTERVAL, MAX_INTERVAL)
-                    _last_sent[chat_id] = now
-                    _last_sent[(chat_id, "target")] = target[0]
-                    _last_greeting_date[greeting_key] = today
-                    _next_due[chat_id] = next_due
-                    await set_proactive_state(
-                        chat_id,
-                        period,
-                        today.isoformat(),
-                        now,
-                        next_due,
-                    )
+                        _last_sent[chat_id] = now
+                        _last_sent[(chat_id, "target")] = target[0]
+                        _last_greeting_date[greeting_key] = today
+                        _next_due[chat_id] = next_due
+                        await set_proactive_state(
+                            chat_id,
+                            period,
+                            today.isoformat(),
+                            now,
+                            next_due,
+                        )
                 except Exception as exc:
                     print(f"Proactive group message error for {chat_id}: {exc}")
         except Exception as exc:
