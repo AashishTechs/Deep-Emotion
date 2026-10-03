@@ -484,7 +484,7 @@ async def start(
         "🎮 Games • 🛠️ AI Tools • 🎙️ Voice AI\n"
         "🎙️ Voice AI • 👥 Group Conversations • 📊 Stats\n\n"
         "Choose an option below and let's get started. 👇\n\n"
-        "🔔 Updates: @deep_emotions_01"
+        "👑 Owner: @Aashish\\_0fficial"
     )
 
     await update.message.reply_photo(
@@ -1442,7 +1442,7 @@ async def button_handler(
             "🧠 Smart Memory • 💬 Natural Chat\n"
             "🎮 Games • 🛠️ AI Tools • 🎙️ Voice AI\n\n"
             "Choose an option below and let's get started. 👇\n\n"
-            "🔔 Updates: @deep_emotions_01"
+            "👑 Owner: @Aashish\\_0fficial"
         )
 
         try:
