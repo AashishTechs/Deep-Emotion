@@ -16,6 +16,7 @@ from telegram.ext import (
 from config import BOT_TOKEN
 
 from bot.database import init_db
+from bot.proactive import proactive_group_loop
 
 from bot.handlers import (
     start,
@@ -291,6 +292,9 @@ async def main():
     await application.updater.start_polling(
         allowed_updates=Update.ALL_TYPES
     )
+
+    # Start slow, rate-limited proactive group engagement.
+    asyncio.create_task(proactive_group_loop(application.bot))
 
     # ======================================================
     # KEEP BOT RUNNING
