@@ -1995,6 +1995,7 @@ async def voice_message(
                 memories=memories,
                 group_context=group_context,
                 is_group=is_group,
+                current_user_name=user.first_name or user.full_name,
             )
 
             await add_message(chat.id, user.id, "user", transcribed_text)
