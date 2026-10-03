@@ -9,10 +9,17 @@ import aiosqlite
 
 
 # ==========================================================
-# DATABASE PATH
+# DATABASE PATH / RETENTION
 # ==========================================================
 
 DB_PATH = Path("data/deep_emotions.db")
+
+# Keep the database small and prevent old conversations from
+# growing forever.
+MESSAGE_RETENTION_DAYS = 7
+MEMORY_RETENTION_DAYS = 30
+MAX_MEMORIES_PER_USER = 20
+MAX_GROUP_MESSAGES_PER_CHAT = 50
 
 
 # ==========================================================
@@ -22,6 +29,7 @@ DB_PATH = Path("data/deep_emotions.db")
 async def init_db():
     """
     Create database directory and all required tables.
+    Also clean old stored data.
     """
 
     DB_PATH.parent.mkdir(
@@ -114,7 +122,103 @@ async def init_db():
             """
         )
 
+        # Clean old data every time the bot starts.
+        await cleanup_old_data(db)
+
         await db.commit()
+
+
+async def cleanup_old_data(db=None):
+    """
+    Remove old conversation data and keep only a small memory set.
+
+    - Personal/group messages older than 7 days are deleted.
+    - Memories older than 30 days are deleted.
+    - Only the latest 20 memories per user are retained.
+    - Group context is capped at 50 messages per group.
+    """
+
+    owns_connection = db is None
+
+    if owns_connection:
+        db = await aiosqlite.connect(DB_PATH)
+
+    try:
+        await db.execute(
+            """
+            DELETE FROM messages
+            WHERE created_at < datetime('now', ?)
+            """,
+            (f"-{MESSAGE_RETENTION_DAYS} days",),
+        )
+
+        await db.execute(
+            """
+            DELETE FROM group_messages
+            WHERE created_at < datetime('now', ?)
+            """,
+            (f"-{MESSAGE_RETENTION_DAYS} days",),
+        )
+
+        await db.execute(
+            """
+            DELETE FROM memories
+            WHERE created_at < datetime('now', ?)
+            """,
+            (f"-{MEMORY_RETENTION_DAYS} days",),
+        )
+
+        await db.execute(
+            """
+            DELETE FROM memories
+            WHERE id NOT IN (
+                SELECT id
+                FROM memories
+                ORDER BY user_id, updated_at DESC, id DESC
+            )
+            AND user_id IN (
+                SELECT user_id
+                FROM memories
+            )
+            """
+        )
+
+        # Keep only the latest MAX_MEMORIES_PER_USER memories
+        # for each user.
+        cursor = await db.execute(
+            """
+            SELECT DISTINCT user_id
+            FROM memories
+            """
+        )
+        users = await cursor.fetchall()
+
+        for (user_id,) in users:
+            await db.execute(
+                """
+                DELETE FROM memories
+                WHERE user_id = ?
+                AND id NOT IN (
+                    SELECT id
+                    FROM memories
+                    WHERE user_id = ?
+                    ORDER BY updated_at DESC, id DESC
+                    LIMIT ?
+                )
+                """,
+                (
+                    user_id,
+                    user_id,
+                    MAX_MEMORIES_PER_USER,
+                ),
+            )
+
+        if owns_connection:
+            await db.commit()
+
+    finally:
+        if owns_connection:
+            await db.close()
 
 
 # ==========================================================
@@ -154,13 +258,36 @@ async def add_message(
             ),
         )
 
+        # Keep only the latest 30 messages for this chat/user.
+        await db.execute(
+            """
+            DELETE FROM messages
+            WHERE chat_id = ?
+            AND user_id = ?
+            AND id NOT IN (
+                SELECT id
+                FROM messages
+                WHERE chat_id = ?
+                AND user_id = ?
+                ORDER BY id DESC
+                LIMIT 30
+            )
+            """,
+            (
+                chat_id,
+                user_id,
+                chat_id,
+                user_id,
+            ),
+        )
+
         await db.commit()
 
 
 async def get_history(
     chat_id,
     user_id,
-    limit=12,
+    limit=10,
 ):
     """
     Get latest conversation messages.
@@ -302,6 +429,26 @@ async def add_memory(
             ),
         )
 
+        # Keep only the latest 20 memories for this user.
+        await db.execute(
+            """
+            DELETE FROM memories
+            WHERE user_id = ?
+            AND id NOT IN (
+                SELECT id
+                FROM memories
+                WHERE user_id = ?
+                ORDER BY updated_at DESC, id DESC
+                LIMIT ?
+            )
+            """,
+            (
+                user_id,
+                user_id,
+                MAX_MEMORIES_PER_USER,
+            ),
+        )
+
         await db.commit()
 
     return True
@@ -309,7 +456,7 @@ async def add_memory(
 
 async def get_memories(
     user_id,
-    limit=30,
+    limit=10,
 ):
     """
     Get latest long-term memories.
@@ -455,7 +602,7 @@ async def add_group_message(
         )
 
         # --------------------------------------------------
-        # Keep latest 100 messages per group
+        # Keep latest 50 messages per group
         # --------------------------------------------------
 
         await db.execute(
@@ -467,12 +614,13 @@ async def add_group_message(
                 FROM group_messages
                 WHERE chat_id = ?
                 ORDER BY id DESC
-                LIMIT 100
+                LIMIT ?
             )
             """,
             (
                 chat_id,
                 chat_id,
+                MAX_GROUP_MESSAGES_PER_CHAT,
             ),
         )
 
@@ -481,7 +629,7 @@ async def add_group_message(
 
 async def get_group_context(
     chat_id,
-    limit=15,
+    limit=10,
 ):
     """
     Get latest group messages.
@@ -555,6 +703,7 @@ async def count_group_messages(
         row = await cursor.fetchone()
 
     return row[0]
+
 
 # ==========================================================
 # ACTIVE GROUPS / MEMBERS FOR PROACTIVE CHAT
