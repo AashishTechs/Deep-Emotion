@@ -320,7 +320,7 @@ def main_menu_keyboard(bot_username="deepemotions01"):
             [_btn("💬 ᴄʜᴀᴛ ᴡɪᴛʜ ᴍᴇ", callback_data="chat", style="danger")],
             [_btn("💗 ʜᴇʟᴘ & ᴄᴏᴍᴍᴀɴᴅs", callback_data="help_main", style="danger")],
             [
-                _btn("🔔 ᴜᴘᴅᴀᴛs", url="https://t.me/deepemotions01", style="success"),
+                _btn("🔔 ᴜᴘᴅᴀᴛs", url="https://t.me/deep_emotions_01", style="success"),
                 _btn("🛠️ ꜱᴜᴘᴘᴏʀᴛ", url="https://t.me/+cGoEVo7d8YtjOTI9", style="success"),
             ],
             [_btn("➕ ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ", url=f"https://t.me/{username}?startgroup=true", style="primary")],
