@@ -18,7 +18,7 @@ MIN_INTERVAL = 20 * 60
 MAX_INTERVAL = 45 * 60
 _next_due = {}
 _last_sent = {}
-_last_morning_date = {}
+_last_greeting_date = {}
 
 
 def _mention(user_id, username, display_name):
@@ -29,20 +29,23 @@ def _mention(user_id, username, display_name):
     return f'<a href="tg://user?id={user_id}">{name}</a>'
 
 
-def _theme():
+def _time_period():
     hour = datetime.now().hour
     if 5 <= hour < 11:
-        return "a warm good-morning check-in"
+        return "morning", "a warm good-morning greeting"
     if 11 <= hour < 17:
-        return "a casual daytime check-in asking what everyone is doing"
+        return "afternoon", "a casual good-afternoon greeting"
     if 17 <= hour < 22:
-        return "a playful evening group check-in"
-    return "a light late-night check-in without encouraging unhealthy sleep habits"
+        return "evening", "a friendly good-evening greeting"
+    return "night", "a light good-night greeting"
+
+
+def _theme():
+    return _time_period()[1]
 
 
 async def _make_message(chat_id, target, context):
     user_id, username, display_name, _ = target
-    mention = _mention(user_id, username, display_name)
     prompt = f"""
 Create ONE short proactive Telegram group message in natural Hinglish.
 Theme: {_theme()}.
@@ -51,6 +54,9 @@ Recent group context:
 
 Requirements:
 - 1 or 2 short sentences.
+- If the theme is a time-based greeting, use the correct greeting for that time only:
+  morning = good morning, afternoon = good afternoon, evening = good evening, night = good night.
+- Do not use a morning greeting in the afternoon/evening/night, and do not use an evening/night greeting in the morning.
 - Sound spontaneous, caring, funny or lightly teasing.
 - Do not tag or mention a specific member unless it is clearly natural from the recent context.
 - It can ask what they are doing, notice they have been quiet, check if they are okay, or make a harmless single/flirty joke.
@@ -67,7 +73,6 @@ Requirements:
         group_context=context,
         is_group=True,
     )
-    # Escape generated text; do not force-tag a member on every proactive message.
     return html.escape(reply)
 
 
@@ -92,10 +97,12 @@ async def proactive_group_loop(bot: Bot):
                 context = await get_group_context(chat_id, limit=12)
 
                 try:
-                    # Only allow one generic good-morning proactive message per group per day.
+                    period, _ = _time_period()
                     today = date.today()
-                    hour = datetime.now().hour
-                    if 5 <= hour < 11 and _last_morning_date.get(chat_id) == today:
+
+                    # Only one time-based greeting per period per group per day.
+                    greeting_key = (chat_id, period)
+                    if _last_greeting_date.get(greeting_key) == today:
                         continue
 
                     message = await _make_message(chat_id, target, context)
@@ -108,8 +115,8 @@ async def proactive_group_loop(bot: Bot):
                         )
                         _last_sent[chat_id] = now
                         _last_sent[(chat_id, "target")] = target[0]
-                        if 5 <= hour < 11:
-                            _last_morning_date[chat_id] = today
+                        _last_greeting_date[greeting_key] = today
+                        _next_due[chat_id] = now + random.randint(MIN_INTERVAL, MAX_INTERVAL)
                 except Exception as exc:
                     print(f"Proactive group message error for {chat_id}: {exc}")
         except Exception as exc:
