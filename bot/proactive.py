@@ -12,7 +12,13 @@ from zoneinfo import ZoneInfo
 from telegram import Bot
 
 from bot.ai import generate_reply
-from bot.database import get_active_groups, get_active_group_users, get_group_context
+from bot.database import (
+    get_active_groups,
+    get_active_group_users,
+    get_group_context,
+    get_proactive_state,
+    set_proactive_state,
+)
 
 
 MIN_INTERVAL = 20 * 60
@@ -87,7 +93,13 @@ async def proactive_group_loop(bot: Bot):
             groups = await get_active_groups()
             now = time.monotonic()
             for chat_id in groups:
-                due = _next_due.get(chat_id, 0)
+                state = await get_proactive_state(chat_id)
+                if state:
+                    _, _, _, persisted_next_due = state
+                    due = persisted_next_due or 0
+                else:
+                    due = _next_due.get(chat_id, 0)
+
                 if now < due:
                     continue
 
@@ -119,10 +131,18 @@ async def proactive_group_loop(bot: Bot):
                             parse_mode="HTML",
                             disable_web_page_preview=True,
                         )
-                        _last_sent[chat_id] = now
-                        _last_sent[(chat_id, "target")] = target[0]
-                        _last_greeting_date[greeting_key] = today
-                        _next_due[chat_id] = now + random.randint(MIN_INTERVAL, MAX_INTERVAL)
+                        next_due = now + random.randint(MIN_INTERVAL, MAX_INTERVAL)
+                    _last_sent[chat_id] = now
+                    _last_sent[(chat_id, "target")] = target[0]
+                    _last_greeting_date[greeting_key] = today
+                    _next_due[chat_id] = next_due
+                    await set_proactive_state(
+                        chat_id,
+                        period,
+                        today.isoformat(),
+                        now,
+                        next_due,
+                    )
                 except Exception as exc:
                     print(f"Proactive group message error for {chat_id}: {exc}")
         except Exception as exc:
