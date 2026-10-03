@@ -1442,7 +1442,7 @@ async def button_handler(
             "talk naturally, and stay with the conversation. 🌸\n\n"
             "🧠 Memory • 💬 Chat • 🎮 Games • 🛠️ AI Tools • 🎙️ Voice AI\n\n"
             "Tap an option below to continue.\n\n"
-            "Updates: @deepemotions01"
+            "Updates: @deep_emotions_01"
         )
 
         try:
