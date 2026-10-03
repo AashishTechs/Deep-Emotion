@@ -313,15 +313,15 @@ def _btn(text, *, callback_data=None, url=None, style="primary"):
     )
 
 
-def main_menu_keyboard(bot_username="deep_emotions_01"):
-    username = (bot_username or "deep_emotions_01").lstrip("@")
+def main_menu_keyboard(bot_username="deepemotions01"):
+    username = (bot_username or "deepemotions01").lstrip("@")
     return InlineKeyboardMarkup(
         [
             [_btn("💬 ᴄʜᴀᴛ ᴡɪᴛʜ ᴍᴇ", callback_data="chat", style="danger")],
             [_btn("💗 ʜᴇʟᴘ & ᴄᴏᴍᴍᴀɴᴅs", callback_data="help_main", style="danger")],
             [
-                _btn("🔔 ᴜᴘᴅᴀᴛs", url="https://t.me/deep_emotions_01", style="success"),
-                _btn("🛠️ ꜱᴜᴘᴘᴏʀᴛ", url="https://t.me/deep_emotions_01", style="success"),
+                _btn("🔔 ᴜᴘᴅᴀᴛs", url="https://t.me/deepemotions01", style="success"),
+                _btn("🛠️ ꜱᴜᴘᴘᴏʀᴛ", url="https://t.me/+cGoEVo7d8YtjOTI9", style="success"),
             ],
             [_btn("➕ ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ", url=f"https://t.me/{username}?startgroup=true", style="primary")],
         ]
@@ -473,7 +473,7 @@ async def start(
     if not update.message:
         return
 
-    bot_username = getattr(context.bot, "username", None) or "deep_emotions_01"
+    bot_username = getattr(context.bot, "username", None) or "deepemotions01"
 
     text = (
         "✨ **Hey, I'm Deep Emotions 💗**\n\n"
@@ -484,7 +484,7 @@ async def start(
         "🔔 I can also reply in groups and react to conversations.\n\n"
         "🎮 Games • 🛠️ AI Tools • 🎙️ Voice AI • 📊 Stats\n\n"
         "Tap **Chat With Me** to start, or add me to your group 👇\n\n"
-        "Updates: @deep_emotions_01"
+        "Updates: @deepemotions01"
     )
 
     await update.message.reply_photo(
@@ -1442,7 +1442,7 @@ async def button_handler(
             "talk naturally, and stay with the conversation. 🌸\n\n"
             "🧠 Memory • 💬 Chat • 🎮 Games • 🛠️ AI Tools • 🎙️ Voice AI\n\n"
             "Tap an option below to continue.\n\n"
-            "Updates: @deep_emotions_01"
+            "Updates: @deepemotions01"
         )
 
         try:
