@@ -942,7 +942,7 @@ async def chat_message(
 
     # Detect mentions of OTHER users. If a message is directed to
     # another user, stay silent unless the bot itself is mentioned/replied to.
-    other_user_mentioned = False
+    other_user_mentioned = replied_to_other_user and not mentioned
 
     if update.message.entities:
         for entity in update.message.entities:
