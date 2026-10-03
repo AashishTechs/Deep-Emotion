@@ -21,6 +21,12 @@ from telegram.ext import ContextTypes
 
 from config import OWNER_ID
 
+from bot.social_engine import (
+    should_reply_group,
+    mark_group_reply,
+    social_game,
+)
+
 from bot.ai import (
     generate_reply,
     extract_memories,
@@ -441,8 +447,8 @@ async def help_command(
 
         "💬 **AI Chat**\n"
         "Private chat mein directly message bhejo.\n"
-        "Group mein mujhe @mention karo "
-        "ya mere message ko reply karo.\n\n"
+        "Group mein normal chat par bhi smartly reply karungi, "
+        "aur @mention/reply par definitely respond karungi.\n\n"
 
         "🎙️ **Voice AI**\n"
         "Voice message bhejo aur main usse samajhkar "
@@ -525,6 +531,28 @@ async def privacy_command(
         parse_mode="Markdown",
         reply_markup=back_button(),
     )
+
+
+# ==========================================================
+# GROUP GAMES
+# ==========================================================
+
+async def game_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    if not update.message:
+        return
+
+    game = (context.args[0] if context.args else "joke").lower()
+
+    if game not in {"truth", "dare", "wyr", "would", "would_you_rather", "joke"}:
+        await update.message.reply_text(
+            "🎮 Games: /game truth | /game dare | /game wyr | /game joke"
+        )
+        return
+
+    await update.message.reply_text(social_game(game))
 
 
 # ==========================================================
@@ -868,18 +896,18 @@ async def chat_message(
     )
 
     # ------------------------------------------------------
-    # Group mode
+    # Smart group mode
     # ------------------------------------------------------
+    if chat.type != "private":
+        if not should_reply_group(
+            chat.id,
+            text,
+            mentioned=mentioned,
+            replied_to_bot=replied_to_bot,
+        ):
+            return
 
-    if (
-        chat.type != "private"
-        and not GROUP_REPLY_ALWAYS
-        and not (
-            mentioned
-            or replied_to_bot
-        )
-    ):
-        return
+        mark_group_reply(chat.id)
 
     # ------------------------------------------------------
     # Remove bot mention
