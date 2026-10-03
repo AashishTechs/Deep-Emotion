@@ -22,6 +22,7 @@ from bot.handlers import (
     start,
     help_command,
     ask,
+    game_command,
     clear_memory,
     stats,
     chat_message,
@@ -137,6 +138,13 @@ async def main():
         CommandHandler(
             "ask",
             ask,
+        )
+    )
+
+    application.add_handler(
+        CommandHandler(
+            "game",
+            game_command,
         )
     )
 
