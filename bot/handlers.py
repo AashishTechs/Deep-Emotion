@@ -940,7 +940,7 @@ async def chat_message(
     if update.message.entities:
         for entity in update.message.entities:
             if entity.type == MessageEntity.MENTION:
-                mention_text = text[entity.offset:entity.offset + entity.length]
+                mention_text = update.message.parse_entity(entity)
                 if (
                     me.username
                     and mention_text.lower() != f"@{me.username}".lower()
