@@ -7,8 +7,9 @@ import re
 import time
 
 
-# Group-level AI reply cooldown. Direct mentions/replies bypass this.
-GROUP_AI_COOLDOWN = 35
+# Group-level AI reply cooldown is disabled for normal messages.
+# Direct mentions/replies also always get a response.
+GROUP_AI_COOLDOWN = 0
 _last_group_reply = {}
 
 POSITIVE = {
@@ -47,35 +48,15 @@ def analyze_message(text):
 
 def should_reply_group(chat_id, text, mentioned=False, replied_to_bot=False):
     """
-    Decide whether the bot should answer an ordinary group message.
+    Reply to every normal text message in a group.
 
-    Direct interaction always gets a response. Otherwise use a cooldown
-    plus conversation signals so the bot participates without flooding.
+    Direct mentions/replies also always get a response.
+    Spam protection is handled separately by the moderation handler.
     """
     if mentioned or replied_to_bot:
         return True
 
-    now = time.monotonic()
-    last = _last_group_reply.get(chat_id, 0)
-
-    if now - last < GROUP_AI_COOLDOWN:
-        return False
-
-    info = analyze_message(text)
-
-    # Strong conversation signals.
-    if info["question"] or info["negative"] or info["social"]:
-        return True
-
-    # Long messages are more likely to be worth reacting to.
-    if info["long"]:
-        return random.random() < 0.55
-
-    # Short casual chatter gets occasional reactions.
-    if info["short"]:
-        return random.random() < 0.12
-
-    return random.random() < 0.28
+    return True
 
 
 def mark_group_reply(chat_id):
