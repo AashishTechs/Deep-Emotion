@@ -1416,6 +1416,21 @@ async def button_handler(
     await query.answer()
     data = query.data
 
+    async def edit_panel(text, markup):
+        if query.message.photo:
+            await query.edit_message_caption(
+                caption=text,
+                parse_mode="Markdown",
+                reply_markup=markup,
+            )
+        else:
+            await edit_panel(
+                text,
+                parse_mode="Markdown",
+                reply_markup=markup,
+            )
+
+
     async def show_home():
         pending_ai_tools.pop((query.message.chat.id, query.from_user.id), None)
 
@@ -1436,9 +1451,8 @@ async def button_handler(
         await context.bot.send_photo(
             chat_id=query.message.chat.id,
             photo=WELCOME_IMAGE_URL,
-            caption=text,
-            parse_mode="Markdown",
-            reply_markup=main_menu_keyboard(
+            caption=text,,
+            main_menu_keyboard(
                 getattr(context.bot, "username", None)
             ),
         )
@@ -1455,40 +1469,36 @@ async def button_handler(
             "🔵 Voice, Groups & Privacy\n"
             "🟢 Games, Stats & Commands"
         )
-        await query.edit_message_text(
-            text,
-            parse_mode="Markdown",
-            reply_markup=help_menu_keyboard(),
+        await edit_panel(
+            text,,
+            help_menu_keyboard(),
         )
         return
 
     if data in HELP_SECTION_TEXT:
-        await query.edit_message_text(
-            HELP_SECTION_TEXT[data],
-            parse_mode="Markdown",
-            reply_markup=help_section_keyboard(data),
+        await edit_panel(
+            HELP_SECTION_TEXT[data],,
+            help_section_keyboard(data),
         )
         return
 
     if data == "chat":
-        await query.edit_message_text(
+        await edit_panel(
             "💬 **Chat With Me**\n\n"
             "Bas apna message bhejo. 😊\n\n"
             "Private chat mein directly baat karo.\n"
-            "Group mein normal text par bhi main reply karungi.",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(
+            "Group mein normal text par bhi main reply karungi.",,
+            InlineKeyboardMarkup(
                 [[_btn("🔙 ʙᴀᴄᴋ", callback_data="home", style="primary")]]
             ),
         )
         return
 
     if data == "ai_tools":
-        await query.edit_message_text(
+        await edit_panel(
             "🛠️ **AI Tools**\n\n"
-            "Neeche se tool choose karo. Tool select karne ke baad apna text bhejo.",
-            parse_mode="Markdown",
-            reply_markup=ai_tools_keyboard(),
+            "Neeche se tool choose karo. Tool select karne ke baad apna text bhejo.",,
+            ai_tools_keyboard(),
         )
         return
 
@@ -1519,10 +1529,9 @@ async def button_handler(
         tool_name, text = tool_map[data]
         pending_ai_tools[(query.message.chat.id, query.from_user.id)] = tool_name
 
-        await query.edit_message_text(
-            text + "\n\n🔙 Cancel karne ke liye Back dabao.",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(
+        await edit_panel(
+            text + "\n\n🔙 Cancel karne ke liye Back dabao.",,
+            InlineKeyboardMarkup(
                 [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ᴀɪ ᴛᴏᴏʟs", callback_data="ai_tools", style="primary")]]
             ),
         )
@@ -1542,10 +1551,9 @@ async def button_handler(
                 "Abhi meri memory mein tumhare baare mein kuch saved nahi hai."
             )
 
-        await query.edit_message_text(
-            text,
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(
+        await edit_panel(
+            text,,
+            InlineKeyboardMarkup(
                 [
                     [_btn("🗑️ ғᴏʀɢᴇᴛ ᴀʟʟ", callback_data="forget_all_confirm", style="danger")],
                     [_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")],
@@ -1556,20 +1564,18 @@ async def button_handler(
 
     if data == "forget_all_confirm":
         await clear_memories(query.from_user.id)
-        await query.edit_message_text(
-            "🧹 **Memory cleared**\n\nTumhari saari long-term memories delete kar di gayi.",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(
+        await edit_panel(
+            "🧹 **Memory cleared**\n\nTumhari saari long-term memories delete kar di gayi.",,
+            InlineKeyboardMarkup(
                 [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
             ),
         )
         return
 
     if data == "ask":
-        await query.edit_message_text(
-            "💬 **Ask AI**\n\nBas apna question message mein bhejo. 😊\n\nExample: Python kya hai?",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(
+        await edit_panel(
+            "💬 **Ask AI**\n\nBas apna question message mein bhejo. 😊\n\nExample: Python kya hai?",,
+            InlineKeyboardMarkup(
                 [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
             ),
         )
@@ -1577,63 +1583,58 @@ async def button_handler(
 
     if data == "clear":
         await clear_history(query.message.chat.id, query.from_user.id)
-        await query.edit_message_text(
-            "🧹 **Chat history cleared**\n\nLong-term memories safe hain.",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(
+        await edit_panel(
+            "🧹 **Chat history cleared**\n\nLong-term memories safe hain.",,
+            InlineKeyboardMarkup(
                 [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
             ),
         )
         return
 
     if data == "privacy":
-        await query.edit_message_text(
+        await edit_panel(
             "🔒 **Privacy**\n\n"
             "Personal memories private chats ke liye hain.\n"
             "Group AI context mein personal memories automatically include nahi hoti.\n\n"
-            "Use /privacy for full details.",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(
+            "Use /privacy for full details.",,
+            InlineKeyboardMarkup(
                 [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
             ),
         )
         return
 
     if data == "voice":
-        await query.edit_message_text(
+        await edit_panel(
             "🎙️ **Voice AI**\n\n"
             "Voice message bhejo aur main usse transcribe karke AI response dungi.\n\n"
-            "Group voice mein mujhe reply ya @mention karo.",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(
+            "Group voice mein mujhe reply ya @mention karo.",,
+            InlineKeyboardMarkup(
                 [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
             ),
         )
         return
 
     if data == "group":
-        await query.edit_message_text(
+        await edit_panel(
             "👥 **Group Chats**\n\n"
             "Normal group text par AI reply karegi.\n"
             "Reply/@mention bhi supported hai.\n\n"
-            "Admins ke liye anti-spam/link moderation active hai.",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(
+            "Admins ke liye anti-spam/link moderation active hai.",,
+            InlineKeyboardMarkup(
                 [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
             ),
         )
         return
 
     if data == "games":
-        await query.edit_message_text(
+        await edit_panel(
             "🎮 **Games**\n\n"
             "Available:\n"
             "/game truth\n"
             "/game dare\n"
             "/game wyr\n"
-            "/game joke",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(
+            "/game joke",,
+            InlineKeyboardMarkup(
                 [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
             ),
         )
@@ -1648,23 +1649,21 @@ async def button_handler(
         if query.message.chat.type != "private":
             group_messages = await count_group_messages(chat_id)
 
-        await query.edit_message_text(
+        await edit_panel(
             "📊 **Deep Emotions Stats**\n\n"
             f"💬 Saved messages: {total_messages}\n"
             f"🧠 Long-term memories: {total_memories}\n"
-            f"👥 Group context messages: {group_messages}",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(
+            f"👥 Group context messages: {group_messages}",,
+            InlineKeyboardMarkup(
                 [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
             ),
         )
         return
 
     if data == "commands":
-        await query.edit_message_text(
-            HELP_SECTION_TEXT["help_commands"],
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(
+        await edit_panel(
+            HELP_SECTION_TEXT["help_commands"],,
+            InlineKeyboardMarkup(
                 [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
             ),
         )
