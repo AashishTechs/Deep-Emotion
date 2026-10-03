@@ -484,7 +484,7 @@ async def start(
         "🔔 I can also reply in groups and react to conversations.\n\n"
         "🎮 Games • 🛠️ AI Tools • 🎙️ Voice AI • 📊 Stats\n\n"
         "Tap **Chat With Me** to start, or add me to your group 👇\n\n"
-        "Updates: @deepemotions01"
+        "Updates: @deep_emotions_01"
     )
 
     await update.message.reply_photo(
