@@ -7,6 +7,7 @@ import html
 import random
 import time
 from datetime import datetime, date
+from zoneinfo import ZoneInfo
 
 from telegram import Bot
 
@@ -29,8 +30,11 @@ def _mention(user_id, username, display_name):
     return f'<a href="tg://user?id={user_id}">{name}</a>'
 
 
+IST = ZoneInfo("Asia/Kolkata")
+
+
 def _time_period():
-    hour = datetime.now().hour
+    hour = datetime.now(IST).hour
     if 5 <= hour < 11:
         return "morning", "a warm good-morning greeting"
     if 11 <= hour < 17:
@@ -98,7 +102,7 @@ async def proactive_group_loop(bot: Bot):
 
                 try:
                     period, _ = _time_period()
-                    today = date.today()
+                    today = datetime.now(IST).date()
 
                     # Only one time-based greeting per period per group per day.
                     greeting_key = (chat_id, period)
@@ -107,6 +111,8 @@ async def proactive_group_loop(bot: Bot):
 
                     message = await _make_message(chat_id, target, context)
                     if message:
+                        mention = _mention(target[0], target[1], target[2])
+                        message = f"{mention} {message}"
                         await bot.send_message(
                             chat_id=chat_id,
                             text=message,
