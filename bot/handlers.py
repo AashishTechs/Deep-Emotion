@@ -1847,3 +1847,39 @@ async def voice_message(
                 chat.id,
                 limit=15,
             )
+
+        try:
+            await update.message.chat.send_action(ChatAction.TYPING)
+
+            reply = await generate_reply(
+                history=history,
+                user_message=transcribed_text,
+                memories=memories,
+                group_context=group_context,
+                is_group=is_group,
+            )
+
+            await add_message(chat.id, user.id, "user", transcribed_text)
+            await add_message(chat.id, user.id, "model", reply)
+
+            if not is_group:
+                new_memories = await extract_memories(transcribed_text)
+                for memory in new_memories:
+                    saved = await add_memory(user.id, memory)
+                    if saved:
+                        print(f"New memory saved for user {user.id}: {memory}")
+
+            await status_message.edit_text(reply)
+
+        except Exception as exc:
+            print("Voice AI error:", repr(exc))
+            await status_message.edit_text(
+                "Sorry 💗 voice AI mein abhi problem aa gayi. Thodi der baad try karo."
+            )
+
+        finally:
+            try:
+                if voice_file_path.exists():
+                    voice_file_path.unlink()
+            except Exception as exc:
+                print("Voice cache cleanup error:", repr(exc))
