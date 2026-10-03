@@ -19,7 +19,7 @@ from telegram import (
 
 from telegram.constants import ChatAction
 
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, ApplicationHandlerStop
 
 from config import OWNER_ID
 
@@ -236,7 +236,7 @@ async def moderate_message(
                 repr(exc),
             )
 
-        return True
+        raise ApplicationHandlerStop
 
     try:
 
@@ -283,7 +283,7 @@ async def moderate_message(
     warnings[key] = 0
     spam_tracker[key].clear()
 
-    return True
+    raise ApplicationHandlerStop
 
 
 # ==========================================================
@@ -639,6 +639,9 @@ async def clear_memory(
         update.effective_chat.id,
         update.effective_user.id,
     )
+
+    if update.effective_chat.type in ("group", "supergroup"):
+        await clear_group_context(update.effective_chat.id)
 
     await update.message.reply_text(
         "🧹 Tumhari conversation history clear kar di.\n\n"
@@ -1645,6 +1648,9 @@ async def button_handler(
             query.message.chat.id,
             query.from_user.id,
         )
+
+        if query.message.chat.type in ("group", "supergroup"):
+            await clear_group_context(query.message.chat.id)
 
         await edit_panel(
             "🧹 **Chat history cleared**\n\n"
