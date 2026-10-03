@@ -295,6 +295,12 @@ pending_ai_tools = {}
 # STEP 5 — MAIN MENU
 # ==========================================================
 
+WELCOME_IMAGE_URL = (
+    "https://raw.githubusercontent.com/"
+    "AashishTechs/Deep-Emotion/main/Welcome.jpg"
+)
+
+
 def main_menu_keyboard():
 
     keyboard = [
@@ -423,8 +429,9 @@ async def start(
         "ya neeche se koi option choose karo. 🌸"
     )
 
-    await update.message.reply_text(
-        text,
+    await update.message.reply_photo(
+        photo=WELCOME_IMAGE_URL,
+        caption=text,
         parse_mode="Markdown",
         reply_markup=main_menu_keyboard(),
     )
@@ -1325,8 +1332,17 @@ async def button_handler(
             "Neeche se koi option choose karo. 🌸"
         )
 
-        await query.edit_message_text(
-            text,
+        await query.answer()
+
+        try:
+            await query.message.delete()
+        except Exception:
+            pass
+
+        await context.bot.send_photo(
+            chat_id=query.message.chat.id,
+            photo=WELCOME_IMAGE_URL,
+            caption=text,
             parse_mode="Markdown",
             reply_markup=main_menu_keyboard(),
         )
