@@ -6,7 +6,7 @@ import asyncio
 import html
 import random
 import time
-from datetime import datetime
+from datetime import datetime, date
 
 from telegram import Bot
 
@@ -18,6 +18,7 @@ MIN_INTERVAL = 20 * 60
 MAX_INTERVAL = 45 * 60
 _next_due = {}
 _last_sent = {}
+_last_morning_date = {}
 
 
 def _mention(user_id, username, display_name):
@@ -45,13 +46,13 @@ async def _make_message(chat_id, target, context):
     prompt = f"""
 Create ONE short proactive Telegram group message in natural Hinglish.
 Theme: {_theme()}.
-Mention this member naturally: {mention}
 Recent group context:
 {context}
 
 Requirements:
 - 1 or 2 short sentences.
 - Sound spontaneous, caring, funny or lightly teasing.
+- Do not tag or mention a specific member unless it is clearly natural from the recent context.
 - It can ask what they are doing, notice they have been quiet, check if they are okay, or make a harmless single/flirty joke.
 - Mild flirting is okay, but no explicit sexual content.
 - Do not guilt-trip, manipulate, or imply emotional dependency.
@@ -66,11 +67,8 @@ Requirements:
         group_context=context,
         is_group=True,
     )
-    # Keep Telegram HTML safe while preserving the user mention.
-    safe_reply = html.escape(reply)
-    if mention.lower() not in reply.lower():
-        safe_reply = f"{mention} {safe_reply}"
-    return safe_reply
+    # Escape generated text; do not force-tag a member on every proactive message.
+    return html.escape(reply)
 
 
 async def proactive_group_loop(bot: Bot):
@@ -94,6 +92,12 @@ async def proactive_group_loop(bot: Bot):
                 context = await get_group_context(chat_id, limit=12)
 
                 try:
+                    # Only allow one generic good-morning proactive message per group per day.
+                    today = date.today()
+                    hour = datetime.now().hour
+                    if 5 <= hour < 11 and _last_morning_date.get(chat_id) == today:
+                        continue
+
                     message = await _make_message(chat_id, target, context)
                     if message:
                         await bot.send_message(
@@ -104,6 +108,8 @@ async def proactive_group_loop(bot: Bot):
                         )
                         _last_sent[chat_id] = now
                         _last_sent[(chat_id, "target")] = target[0]
+                        if 5 <= hour < 11:
+                            _last_morning_date[chat_id] = today
                 except Exception as exc:
                     print(f"Proactive group message error for {chat_id}: {exc}")
         except Exception as exc:
