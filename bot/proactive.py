@@ -56,13 +56,17 @@ Requirements:
 - Do not repeat a generic greeting if the context already has one.
 - Return only the message text.
 """
-    return await generate_reply(
+    reply = await generate_reply(
         history=[],
         user_message=prompt,
         memories=[],
         group_context=context,
         is_group=True,
     )
+    # Guarantee that the selected member is actually mentioned.
+    if mention.lower() not in reply.lower():
+        reply = f"{mention} {reply}"
+    return reply
 
 
 async def proactive_group_loop(bot: Bot):
