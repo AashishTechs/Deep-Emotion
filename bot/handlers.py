@@ -934,27 +934,35 @@ async def chat_message(
         and update.message.reply_to_message.from_user.id == me.id
     )
 
-    # Detect Telegram @mentions of other users. If the message is
-    # explicitly directed to another user, do not interrupt them.
+    # Detect mentions of OTHER users. If a message is directed to
+    # another user, stay silent unless the bot itself is mentioned/replied to.
     other_user_mentioned = False
+
     if update.message.entities:
         for entity in update.message.entities:
             if entity.type == MessageEntity.MENTION:
-                mention_text = update.message.parse_entity(entity)
-                if (
-                    me.username
-                    and mention_text.lower() != f"@{me.username}".lower()
-                ):
+                mention_text = update.message.parse_entity(entity).strip()
+                if me.username and mention_text.lower() != f"@{me.username}".lower():
                     other_user_mentioned = True
                     break
+
             elif entity.type == MessageEntity.TEXT_MENTION:
                 mentioned_user = entity.user
                 if mentioned_user and mentioned_user.id != me.id:
                     other_user_mentioned = True
                     break
 
+    # Fallback for clients/messages where Telegram mention entities are
+    # missing but an @username is still present in the message text.
+    if not other_user_mentioned and not mentioned and not replied_to_bot:
+        usernames = re.findall(r"(?<![\\w@])@[A-Za-z0-9_]{3,32}", text)
+        bot_tag = f"@{me.username}".lower() if me.username else ""
+        if any(tag.lower() != bot_tag for tag in usernames):
+            other_user_mentioned = True
+
     # ------------------------------------------------------
     # Smart group mode
+
     # ------------------------------------------------------
     if chat.type != "private":
         if not should_reply_group(
