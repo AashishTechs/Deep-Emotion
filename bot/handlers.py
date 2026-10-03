@@ -302,62 +302,76 @@ WELCOME_IMAGE_URL = (
 )
 
 
-def main_menu_keyboard():
-
-    keyboard = [
-
-        [
-            InlineKeyboardButton(
-                "🧠 Memory",
-                callback_data="memory",
-            ),
-            InlineKeyboardButton(
-                "💬 Ask AI",
-                callback_data="ask",
-            ),
-        ],
-
-        [
-            InlineKeyboardButton(
-                "🛠️ AI Tools",
-                callback_data="ai_tools",
-            ),
-        ],
-
-        [
-            InlineKeyboardButton(
-                "❓ Help",
-                callback_data="help",
-            ),
-            InlineKeyboardButton(
-                "🧹 Clear Chat",
-                callback_data="clear",
-            ),
-        ],
-
-    ]
-
-    return InlineKeyboardMarkup(
-        keyboard
+def _btn(text, *, callback_data=None, url=None, style="primary"):
+    return InlineKeyboardButton(
+        text,
+        callback_data=callback_data,
+        url=url,
+        style=style,
     )
 
 
-# ==========================================================
-# BACK BUTTON
-# ==========================================================
+def main_menu_keyboard(bot_username="deep_emotions_01"):
+    username = (bot_username or "deep_emotions_01").lstrip("@")
+    return InlineKeyboardMarkup(
+        [
+            [_btn("💬 ᴄʜᴀᴛ ᴡɪᴛʜ ᴍᴇ", callback_data="chat", style="danger")],
+            [
+                _btn("📢 ᴜᴘᴅᴀᴛs", url="https://t.me/deep_emotions_01", style="success"),
+                _btn("🆘 ꜱᴜᴘᴘᴏʀᴛ", url="https://t.me/deep_emotions_01", style="success"),
+            ],
+            [_btn("➕ ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ", url=f"https://t.me/{username}?startgroup=true", style="primary")],
+            [_btn("❓ ʜᴇʟᴘ & ᴄᴏᴍᴍᴀɴᴅs", callback_data="help_main", style="danger")],
+        ]
+    )
 
-def back_button():
 
+def help_menu_keyboard():
     return InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton(
-                    "🔙 Back",
-                    callback_data="back",
-                )
-            ]
+                _btn("💬 ᴄʜᴀᴛ", callback_data="help_chat", style="danger"),
+                _btn("🧠 ᴍᴇᴍᴏʀʏ", callback_data="help_memory", style="danger"),
+                _btn("🛠️ ᴀɪ ᴛᴏᴏʟs", callback_data="help_ai_tools", style="danger"),
+            ],
+            [
+                _btn("🎙️ ᴠᴏɪᴄᴇ", callback_data="help_voice", style="primary"),
+                _btn("👥 ɢʀᴏᴜᴘ", callback_data="help_group", style="primary"),
+                _btn("🔒 ᴘʀɪᴠᴀᴄʏ", callback_data="help_privacy", style="primary"),
+            ],
+            [
+                _btn("🎮 ɢᴀᴍᴇs", callback_data="help_games", style="success"),
+                _btn("📊 sᴛᴀᴛs", callback_data="help_stats", style="success"),
+                _btn("📖 ᴄᴏᴍᴍᴀɴᴅs", callback_data="help_commands", style="success"),
+            ],
+            [_btn("ʙᴀᴄᴋ", callback_data="back", style="danger")],
         ]
     )
+
+
+HELP_SECTION_TEXT = {
+    "help_chat": "💬 **Chat With Me**\n\nPrivate chat mein directly baat karo. 🌸\nGroup mein normal messages par bhi AI reply kar sakti hoon, aur @mention/reply par definitely respond karungi.\n\nUse: /ask your question",
+    "help_memory": "🧠 **Memory**\n\nMain useful conversation memories save kar sakti hoon.\n\n/memory — saved memories\n/forget ID — ek memory delete\n/forget_all — all memories delete",
+    "help_ai_tools": "🛠️ **AI Tools**\n\nRewrite • Summarize • Translate • Explain • Study Help.\n\nNeeche Open AI Tools dabao.",
+    "help_voice": "🎙️ **Voice AI**\n\nVoice message bhejo aur main usse transcribe karke AI response dungi.",
+    "help_group": "👥 **Group Chats**\n\nNormal group text par AI reply kar sakti hoon. Reply ya @mention bhi supported hai.\n\nAdmins moderation aur group controls use kar sakte hain.",
+    "help_privacy": "🔒 **Privacy**\n\nUse /privacy to see memory and group-data information.\n\nPersonal memories ko group AI context mein automatically include nahi kiya jata.",
+    "help_games": "🎮 **Games**\n\nSocial game mode available hai.\n\nUse /game to start or explore the available game.",
+    "help_stats": "📊 **Stats**\n\nUse /stats to see your conversation statistics.",
+    "help_commands": "📖 **Commands**\n\n/start — welcome panel\n/help — help center\n/ask — ask AI\n/game — social game\n/memory — memories\n/forget — delete one memory\n/forget_all — delete all memories\n/clear — clear chat history\n/stats — statistics\n/privacy — privacy",
+}
+
+
+def help_section_keyboard(section):
+    rows = []
+    if section == "help_ai_tools":
+        rows.append([_btn("🛠️ ᴏᴘᴇɴ ᴀɪ ᴛᴏᴏʟs", callback_data="ai_tools", style="success")])
+    rows.append([_btn("ʙᴀᴄᴋ", callback_data="help_main", style="danger")])
+    return InlineKeyboardMarkup(rows)
+
+
+def back_button():
+    return InlineKeyboardMarkup([[_btn("ʙᴀᴄᴋ", callback_data="back", style="danger")]])
 
 
 # ==========================================================
@@ -365,49 +379,19 @@ def back_button():
 # ==========================================================
 
 def ai_tools_keyboard():
-
-    keyboard = [
-
-        [
-            InlineKeyboardButton(
-                "✍️ Rewrite",
-                callback_data="tool_rewrite",
-            ),
-            InlineKeyboardButton(
-                "📝 Summarize",
-                callback_data="tool_summarize",
-            ),
-        ],
-
-        [
-            InlineKeyboardButton(
-                "🌐 Translate",
-                callback_data="tool_translate",
-            ),
-            InlineKeyboardButton(
-                "💡 Explain",
-                callback_data="tool_explain",
-            ),
-        ],
-
-        [
-            InlineKeyboardButton(
-                "📚 Study Help",
-                callback_data="tool_study",
-            ),
-        ],
-
-        [
-            InlineKeyboardButton(
-                "🔙 Back",
-                callback_data="back",
-            )
-        ],
-
-    ]
-
     return InlineKeyboardMarkup(
-        keyboard
+        [
+            [
+                _btn("✍️ Rewrite", callback_data="tool_rewrite", style="danger"),
+                _btn("📝 Summarize", callback_data="tool_summarize", style="danger"),
+            ],
+            [
+                _btn("🌐 Translate", callback_data="tool_translate", style="primary"),
+                _btn("💡 Explain", callback_data="tool_explain", style="primary"),
+            ],
+            [_btn("📚 Study Help", callback_data="tool_study", style="success")],
+            [_btn("ʙᴀᴄᴋ", callback_data="help_main", style="danger")],
+        ]
     )
 
 
@@ -425,16 +409,21 @@ async def start(
 
     text = (
         "💗 **𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴs**\n\n"
-        "✨ Your personal AI assistant\n\n"
-        "Mujhse normal chat karo, "
-        "ya neeche se koi option choose karo. 🌸"
+        "Hey, I'm Deep Emotions 💗\n\n"
+        "Not your average bot — I remember useful things, "
+        "talk naturally, and stay with the conversation. 🌸\n\n"
+        "💬 Tap Chat With Me to talk.\n"
+        "❓ Tap Help & Commands to see everything.\n\n"
+        "Updates: @deep_emotions_01"
     )
 
     await update.message.reply_photo(
         photo=WELCOME_IMAGE_URL,
         caption=text,
         parse_mode="Markdown",
-        reply_markup=main_menu_keyboard(),
+        reply_markup=main_menu_keyboard(
+            getattr(context.bot, "username", None)
+        ),
     )
 
 
@@ -446,51 +435,22 @@ async def help_command(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-
     if not update.message:
         return
 
     text = (
-        "✨ **Deep Emotions — Help**\n\n"
-
-        "💬 **AI Chat**\n"
-        "Private chat mein directly message bhejo.\n"
-        "Group mein normal chat par bhi smartly reply karungi, "
-        "aur @mention/reply par definitely respond karungi.\n\n"
-
-        "🎙️ **Voice AI**\n"
-        "Voice message bhejo aur main usse samajhkar "
-        "AI response dungi.\n\n"
-
-        "🧠 **Memory**\n"
-        "/memory — saved memories\n"
-        "/forget ID — ek memory delete\n"
-        "/forget_all — all memories delete\n\n"
-
-        "🛠️ **AI Tools**\n"
-        "Rewrite, Summarize, Translate, "
-        "Explain aur Study Help.\n\n"
-
-        "🔒 **Privacy**\n"
-        "/privacy — privacy information\n\n"
-
-        "🧹 **Chat**\n"
-        "/clear — conversation history clear\n"
-        "/stats — statistics\n\n"
-
-        "🤖 **Ask AI**\n"
-        "/ask your question\n\n"
-
-        "Example:\n"
-        "`/ask Python kya hai?`"
+        "❓ **Deep Emotions — Help & Commands**\n\n"
+        "Choose a category below. 👇\n\n"
+        "🔴 AI & memory\n"
+        "🔵 Voice, groups & privacy\n"
+        "🟢 Games, stats & commands"
     )
 
     await update.message.reply_text(
         text,
         parse_mode="Markdown",
-        reply_markup=back_button(),
+        reply_markup=help_menu_keyboard(),
     )
-
 
 # ==========================================================
 # STEP 8 — PRIVACY
@@ -1389,6 +1349,50 @@ async def button_handler(
     await query.answer()
 
     data = query.data
+
+    # ======================================================
+    # HELP CENTER
+    # ======================================================
+
+    if data in ("help", "help_main"):
+        text = (
+            "❓ **Deep Emotions — Help & Commands**\n\n"
+            "Choose a category below. 👇\n\n"
+            "🔴 AI & memory\n"
+            "🔵 Voice, groups & privacy\n"
+            "🟢 Games, stats & commands"
+        )
+        try:
+            await query.edit_message_caption(
+                caption=text,
+                parse_mode="Markdown",
+                reply_markup=help_menu_keyboard(),
+            )
+        except Exception:
+            await query.edit_message_text(
+                text,
+                parse_mode="Markdown",
+                reply_markup=help_menu_keyboard(),
+            )
+        return
+
+    if data in HELP_SECTION_TEXT:
+        await query.edit_message_text(
+            HELP_SECTION_TEXT[data],
+            parse_mode="Markdown",
+            reply_markup=help_section_keyboard(data),
+        )
+        return
+
+    if data == "chat":
+        await query.edit_message_text(
+            "💬 **Chat With Me**\n\n"
+            "Bas message bhejo — private chat mein directly baat kar sakte ho. 💗\n\n"
+            "Group mein bhi normal text par AI reply kar sakti hoon.",
+            parse_mode="Markdown",
+            reply_markup=back_button(),
+        )
+        return
 
     # ======================================================
     # BACK
