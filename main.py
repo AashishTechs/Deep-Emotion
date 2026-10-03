@@ -15,7 +15,7 @@ from telegram.ext import (
 
 from config import BOT_TOKEN
 
-from bot.database import init_db
+from bot.database import init_db, cleanup_old_data
 from bot.proactive import proactive_group_loop
 
 from bot.handlers import (
@@ -48,6 +48,36 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+
+# ==========================================================
+# PERIODIC DATABASE CLEANUP
+# ==========================================================
+
+async def periodic_db_cleanup():
+    """
+    Periodically remove expired conversation and memory data.
+    Startup cleanup is handled by init_db(); this keeps cleanup
+    running while the bot stays online.
+    """
+
+    while True:
+
+        await asyncio.sleep(6 * 60 * 60)
+
+        try:
+
+            await cleanup_old_data()
+
+            logger.info(
+                "Periodic database cleanup completed."
+            )
+
+        except Exception:
+
+            logger.exception(
+                "Periodic database cleanup failed."
+            )
 
 
 # ==========================================================
@@ -303,6 +333,7 @@ async def main():
 
     # Start slow, rate-limited proactive group engagement.
     asyncio.create_task(proactive_group_loop(application.bot))
+    asyncio.create_task(periodic_db_cleanup())
 
     # ======================================================
     # KEEP BOT RUNNING
