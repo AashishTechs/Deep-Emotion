@@ -66,10 +66,11 @@ Requirements:
         group_context=context,
         is_group=True,
     )
-    # Guarantee that the selected member is actually mentioned.
+    # Keep Telegram HTML safe while preserving the user mention.
+    safe_reply = html.escape(reply)
     if mention.lower() not in reply.lower():
-        reply = f"{mention} {reply}"
-    return reply
+        safe_reply = f"{mention} {safe_reply}"
+    return safe_reply
 
 
 async def proactive_group_loop(bot: Bot):
