@@ -1410,7 +1410,7 @@ async def button_handler(
     context: ContextTypes.DEFAULT_TYPE,
 ):
     query = update.callback_query
-    if not query:
+    if not query or not query.message:
         return
 
     await query.answer()
@@ -1424,15 +1424,17 @@ async def button_handler(
                 reply_markup=markup,
             )
         else:
-            await edit_panel(
-                text,
+            await query.edit_message_text(
+                text=text,
                 parse_mode="Markdown",
                 reply_markup=markup,
             )
 
-
     async def show_home():
-        pending_ai_tools.pop((query.message.chat.id, query.from_user.id), None)
+        pending_ai_tools.pop(
+            (query.message.chat.id, query.from_user.id),
+            None,
+        )
 
         text = (
             "✨ **Hey, I'm Deep Emotions 💗**\n\n"
@@ -1451,8 +1453,9 @@ async def button_handler(
         await context.bot.send_photo(
             chat_id=query.message.chat.id,
             photo=WELCOME_IMAGE_URL,
-            caption=text,,
-            main_menu_keyboard(
+            caption=text,
+            parse_mode="Markdown",
+            reply_markup=main_menu_keyboard(
                 getattr(context.bot, "username", None)
             ),
         )
@@ -1462,22 +1465,19 @@ async def button_handler(
         return
 
     if data == "help_main":
-        text = (
+        await edit_panel(
             "💗 **Deep Emotions — Help & Commands**\n\n"
             "Choose a category below. 👇\n\n"
             "🔴 Chat, Memory & AI Tools\n"
             "🔵 Voice, Groups & Privacy\n"
-            "🟢 Games, Stats & Commands"
-        )
-        await edit_panel(
-            text,,
+            "🟢 Games, Stats & Commands",
             help_menu_keyboard(),
         )
         return
 
     if data in HELP_SECTION_TEXT:
         await edit_panel(
-            HELP_SECTION_TEXT[data],,
+            HELP_SECTION_TEXT[data],
             help_section_keyboard(data),
         )
         return
@@ -1487,7 +1487,7 @@ async def button_handler(
             "💬 **Chat With Me**\n\n"
             "Bas apna message bhejo. 😊\n\n"
             "Private chat mein directly baat karo.\n"
-            "Group mein normal text par bhi main reply karungi.",,
+            "Group mein normal text par bhi main reply karungi.",
             InlineKeyboardMarkup(
                 [[_btn("🔙 ʙᴀᴄᴋ", callback_data="home", style="primary")]]
             ),
@@ -1497,7 +1497,7 @@ async def button_handler(
     if data == "ai_tools":
         await edit_panel(
             "🛠️ **AI Tools**\n\n"
-            "Neeche se tool choose karo. Tool select karne ke baad apna text bhejo.",,
+            "Neeche se tool choose karo. Tool select karne ke baad apna text bhejo.",
             ai_tools_keyboard(),
         )
         return
@@ -1505,40 +1505,56 @@ async def button_handler(
     tool_map = {
         "tool_rewrite": (
             "rewrite",
-            "✍️ **Rewrite**\n\nApna text bhejo. Main usse clearer aur natural bana dungi.",
+            "✍️ **Rewrite**\n\n"
+            "Apna text bhejo. Main usse clearer aur natural bana dungi.",
         ),
         "tool_summarize": (
             "summarize",
-            "📝 **Summarize**\n\nApna long text bhejo. Main important points ka summary bana dungi.",
+            "📝 **Summarize**\n\n"
+            "Apna long text bhejo. Main important points ka summary bana dungi.",
         ),
         "tool_translate": (
             "translate",
-            "🌐 **Translate**\n\nText bhejo. Target language bhi likh sakte ho.",
+            "🌐 **Translate**\n\n"
+            "Text bhejo. Target language bhi likh sakte ho.",
         ),
         "tool_explain": (
             "explain",
-            "💡 **Explain**\n\nKoi topic ya concept bhejo. Main simple language mein explain karungi.",
+            "💡 **Explain**\n\n"
+            "Koi topic ya concept bhejo. Main simple language mein explain karungi.",
         ),
         "tool_study": (
             "study",
-            "📚 **Study Help**\n\nApna study question bhejo. Main student-friendly explanation dungi.",
+            "📚 **Study Help**\n\n"
+            "Apna study question bhejo. Main student-friendly explanation dungi.",
         ),
     }
 
     if data in tool_map:
         tool_name, text = tool_map[data]
-        pending_ai_tools[(query.message.chat.id, query.from_user.id)] = tool_name
+        pending_ai_tools[
+            (query.message.chat.id, query.from_user.id)
+        ] = tool_name
 
         await edit_panel(
-            text + "\n\n🔙 Cancel karne ke liye Back dabao.",,
+            text + "\n\n🔙 Cancel karne ke liye Back dabao.",
             InlineKeyboardMarkup(
-                [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ᴀɪ ᴛᴏᴏʟs", callback_data="ai_tools", style="primary")]]
+                [[
+                    _btn(
+                        "🔙 ʙᴀᴄᴋ ᴛᴏ ᴀɪ ᴛᴏᴏʟs",
+                        callback_data="ai_tools",
+                        style="primary",
+                    )
+                ]]
             ),
         )
         return
 
     if data == "memory":
-        memories = await get_memories(query.from_user.id, limit=10)
+        memories = await get_memories(
+            query.from_user.id,
+            limit=10,
+        )
 
         if memories:
             lines = ["🧠 **Tumhari Long-Term Memories**\n"]
@@ -1552,11 +1568,23 @@ async def button_handler(
             )
 
         await edit_panel(
-            text,,
+            text,
             InlineKeyboardMarkup(
                 [
-                    [_btn("🗑️ ғᴏʀɢᴇᴛ ᴀʟʟ", callback_data="forget_all_confirm", style="danger")],
-                    [_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")],
+                    [
+                        _btn(
+                            "🗑️ ғᴏʀɢᴇᴛ ᴀʟʟ",
+                            callback_data="forget_all_confirm",
+                            style="danger",
+                        )
+                    ],
+                    [
+                        _btn(
+                            "🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ",
+                            callback_data="help_main",
+                            style="primary",
+                        )
+                    ],
                 ]
             ),
         )
@@ -1564,29 +1592,56 @@ async def button_handler(
 
     if data == "forget_all_confirm":
         await clear_memories(query.from_user.id)
+
         await edit_panel(
-            "🧹 **Memory cleared**\n\nTumhari saari long-term memories delete kar di gayi.",,
+            "🧹 **Memory cleared**\n\n"
+            "Tumhari saari long-term memories delete kar di gayi.",
             InlineKeyboardMarkup(
-                [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
+                [[
+                    _btn(
+                        "🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ",
+                        callback_data="help_main",
+                        style="primary",
+                    )
+                ]]
             ),
         )
         return
 
     if data == "ask":
         await edit_panel(
-            "💬 **Ask AI**\n\nBas apna question message mein bhejo. 😊\n\nExample: Python kya hai?",,
+            "💬 **Ask AI**\n\n"
+            "Bas apna question message mein bhejo. 😊\n\n"
+            "Example: Python kya hai?",
             InlineKeyboardMarkup(
-                [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
+                [[
+                    _btn(
+                        "🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ",
+                        callback_data="help_main",
+                        style="primary",
+                    )
+                ]]
             ),
         )
         return
 
     if data == "clear":
-        await clear_history(query.message.chat.id, query.from_user.id)
+        await clear_history(
+            query.message.chat.id,
+            query.from_user.id,
+        )
+
         await edit_panel(
-            "🧹 **Chat history cleared**\n\nLong-term memories safe hain.",,
+            "🧹 **Chat history cleared**\n\n"
+            "Long-term memories safe hain.",
             InlineKeyboardMarkup(
-                [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
+                [[
+                    _btn(
+                        "🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ",
+                        callback_data="help_main",
+                        style="primary",
+                    )
+                ]]
             ),
         )
         return
@@ -1596,9 +1651,15 @@ async def button_handler(
             "🔒 **Privacy**\n\n"
             "Personal memories private chats ke liye hain.\n"
             "Group AI context mein personal memories automatically include nahi hoti.\n\n"
-            "Use /privacy for full details.",,
+            "Use /privacy for full details.",
             InlineKeyboardMarkup(
-                [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
+                [[
+                    _btn(
+                        "🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ",
+                        callback_data="help_main",
+                        style="primary",
+                    )
+                ]]
             ),
         )
         return
@@ -1607,9 +1668,15 @@ async def button_handler(
         await edit_panel(
             "🎙️ **Voice AI**\n\n"
             "Voice message bhejo aur main usse transcribe karke AI response dungi.\n\n"
-            "Group voice mein mujhe reply ya @mention karo.",,
+            "Group voice mein mujhe reply ya @mention karo.",
             InlineKeyboardMarkup(
-                [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
+                [[
+                    _btn(
+                        "🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ",
+                        callback_data="help_main",
+                        style="primary",
+                    )
+                ]]
             ),
         )
         return
@@ -1619,9 +1686,15 @@ async def button_handler(
             "👥 **Group Chats**\n\n"
             "Normal group text par AI reply karegi.\n"
             "Reply/@mention bhi supported hai.\n\n"
-            "Admins ke liye anti-spam/link moderation active hai.",,
+            "Admins ke liye anti-spam/link moderation active hai.",
             InlineKeyboardMarkup(
-                [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
+                [[
+                    _btn(
+                        "🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ",
+                        callback_data="help_main",
+                        style="primary",
+                    )
+                ]]
             ),
         )
         return
@@ -1633,9 +1706,15 @@ async def button_handler(
             "/game truth\n"
             "/game dare\n"
             "/game wyr\n"
-            "/game joke",,
+            "/game joke",
             InlineKeyboardMarkup(
-                [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
+                [[
+                    _btn(
+                        "🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ",
+                        callback_data="help_main",
+                        style="primary",
+                    )
+                ]]
             ),
         )
         return
@@ -1643,28 +1722,49 @@ async def button_handler(
     if data == "stats":
         user_id = query.from_user.id
         chat_id = query.message.chat.id
-        total_messages = await count_messages(chat_id, user_id)
-        total_memories = await count_memories(user_id)
+
+        total_messages = await count_messages(
+            chat_id,
+            user_id,
+        )
+        total_memories = await count_memories(
+            user_id,
+        )
+
         group_messages = 0
         if query.message.chat.type != "private":
-            group_messages = await count_group_messages(chat_id)
+            group_messages = await count_group_messages(
+                chat_id,
+            )
 
         await edit_panel(
             "📊 **Deep Emotions Stats**\n\n"
             f"💬 Saved messages: {total_messages}\n"
             f"🧠 Long-term memories: {total_memories}\n"
-            f"👥 Group context messages: {group_messages}",,
+            f"👥 Group context messages: {group_messages}",
             InlineKeyboardMarkup(
-                [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
+                [[
+                    _btn(
+                        "🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ",
+                        callback_data="help_main",
+                        style="primary",
+                    )
+                ]]
             ),
         )
         return
 
     if data == "commands":
         await edit_panel(
-            HELP_SECTION_TEXT["help_commands"],,
+            HELP_SECTION_TEXT["help_commands"],
             InlineKeyboardMarkup(
-                [[_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")]]
+                [[
+                    _btn(
+                        "🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ",
+                        callback_data="help_main",
+                        style="primary",
+                    )
+                ]]
             ),
         )
         return
