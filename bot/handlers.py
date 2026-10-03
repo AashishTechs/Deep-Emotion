@@ -934,6 +934,25 @@ async def chat_message(
         and update.message.reply_to_message.from_user.id == me.id
     )
 
+    # Detect Telegram @mentions of other users. If the message is
+    # explicitly directed to another user, do not interrupt them.
+    other_user_mentioned = False
+    if update.message.entities:
+        for entity in update.message.entities:
+            if entity.type == MessageEntity.MENTION:
+                mention_text = text[entity.offset:entity.offset + entity.length]
+                if (
+                    me.username
+                    and mention_text.lower() != f"@{me.username}".lower()
+                ):
+                    other_user_mentioned = True
+                    break
+            elif entity.type == MessageEntity.TEXT_MENTION:
+                mentioned_user = entity.user
+                if mentioned_user and mentioned_user.id != me.id:
+                    other_user_mentioned = True
+                    break
+
     # ------------------------------------------------------
     # Smart group mode
     # ------------------------------------------------------
@@ -943,6 +962,7 @@ async def chat_message(
             text,
             mentioned=mentioned,
             replied_to_bot=replied_to_bot,
+            other_user_mentioned=other_user_mentioned,
         ):
             return
 
