@@ -37,6 +37,13 @@ from bot.handlers import (
     privacy_command,
 )
 
+from bot.truth_dare import (
+    truth_command,
+    dare_command,
+    truth_dare_command,
+    truth_dare_callback,
+)
+
 
 # ==========================================================
 # LOGGING
@@ -180,6 +187,27 @@ async def main():
 
     application.add_handler(
         CommandHandler(
+            "truth",
+            truth_command,
+        )
+    )
+
+    application.add_handler(
+        CommandHandler(
+            "dare",
+            dare_command,
+        )
+    )
+
+    application.add_handler(
+        CommandHandler(
+            "td",
+            truth_dare_command,
+        )
+    )
+
+    application.add_handler(
+        CommandHandler(
             "memory",
             memory_command,
         )
@@ -221,6 +249,17 @@ async def main():
     )
 
     # ======================================================
+    # TRUTH OR DARE BUTTONS
+    # ======================================================
+
+    application.add_handler(
+        CallbackQueryHandler(
+            truth_dare_callback,
+            pattern=r"^td:",
+        )
+    )
+
+    # ======================================================
     # INLINE BUTTONS
     # ======================================================
 
@@ -237,7 +276,7 @@ async def main():
     application.add_handler(
         MessageHandler(
             filters.StatusUpdate.NEW_CHAT_MEMBERS,
-            welcome_new_member,
+            welcome_new_member
         )
     )
 
@@ -248,7 +287,7 @@ async def main():
     application.add_handler(
         MessageHandler(
             filters.StatusUpdate.LEFT_CHAT_MEMBER,
-            goodbye_member,
+            goodbye_member
         )
     )
 
@@ -268,7 +307,7 @@ async def main():
     application.add_handler(
         MessageHandler(
             filters.VOICE,
-            voice_message,
+            voice_message
         ),
         group=0,
     )
@@ -287,7 +326,7 @@ async def main():
     application.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
-            moderate_message,
+            moderate_message
         ),
         group=1,
     )
@@ -310,7 +349,7 @@ async def main():
     application.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
-            chat_message,
+            chat_message
         ),
         group=2,
     )
