@@ -870,16 +870,17 @@ async def groups_command(
         )
         return
 
-    lines = [f"👥 **Deep Emotion — Registered Groups ({len(group_ids)})**", ""]
+    lines = [f"👥 <b>Deep Emotion — Registered Groups ({len(group_ids)})</b>", ""]
     for index, group_id in enumerate(group_ids, start=1):
         try:
             group = await context.bot.get_chat(group_id)
             title = group.title or "Unnamed group"
-            lines.append(f"{index}. **{title}**\n   ID: `{group_id}`")
+            safe_title = html.escape(title)
+            lines.append(f"{index}. <b>{safe_title}</b>\n   ID: <code>{group_id}</code>")
         except Exception as exc:
             # Retain the registry entry; don't silently delete data from a read command.
-            lines.append(f"{index}. **Group name unavailable**\n   ID: `{group_id}`")
-            logger.warning("Could not fetch group %s for /groups: %s", group_id, exc)
+            lines.append(f"{index}. <b>Group name unavailable</b>\n   ID: <code>{group_id}</code>")
+            print(f"Could not fetch group {group_id} for /groups: {exc}")
 
     # Telegram limits a message to 4096 characters; send safe-sized chunks.
     header = lines[:2]
@@ -887,7 +888,7 @@ async def groups_command(
     for line in lines[2:]:
         candidate = f"{chunk}\n{line}" if chunk else line
         if len(candidate) > 3500:
-            await message.reply_text(chunk, parse_mode="Markdown")
+            await message.reply_text(chunk, parse_mode="HTML")
             chunk = line
         else:
             chunk = candidate
