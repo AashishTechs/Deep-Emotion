@@ -1420,50 +1420,101 @@ async def send_text_with_user_mentions(
 # WELCOME
 # ==========================================================
 
+async def _send_welcome_message(
+    chat,
+    member,
+    context: ContextTypes.DEFAULT_TYPE,
+    reply_to_message=None,
+):
+    """Send one welcome per user/chat even if Telegram emits both join updates."""
+    if not chat or not member or member.id == context.bot.id:
+        return
+
+    recent = context.chat_data.setdefault("_recent_welcome_messages", {})
+    now = time.monotonic()
+
+    # Keep the cache small and prevent duplicate welcomes from the two update types.
+    for user_id, sent_at in list(recent.items()):
+        if now - sent_at > 60:
+            recent.pop(user_id, None)
+
+    if member.id in recent:
+        return
+
+    name = member.first_name or member.username or "Friend"
+    welcome_text = f"🥹💗 Welcome {name}, 𝐓ᴜᴍ 𝐀ᴀ 𝐆ᴀʏᴇ! 🌸🧸"
+    name_offset = len("🥹💗 Welcome ".encode("utf-16-le")) // 2
+    name_length = len(name.encode("utf-16-le")) // 2
+    entities = [
+        MessageEntity(
+            type=MessageEntity.TEXT_MENTION,
+            offset=name_offset,
+            length=name_length,
+            user=member,
+        )
+    ]
+
+    if reply_to_message:
+        await reply_to_message.reply_text(welcome_text, entities=entities)
+    else:
+        await context.bot.send_message(
+            chat_id=chat.id,
+            text=welcome_text,
+            entities=entities,
+        )
+
+    recent[member.id] = now
+
+
 async def welcome_new_member(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-
+    """Handle Telegram's NEW_CHAT_MEMBERS service message."""
     if not update.message:
         return
 
     chat = update.effective_chat
+    for member in update.message.new_chat_members or []:
+        await _send_welcome_message(
+            chat,
+            member,
+            context,
+            reply_to_message=update.message,
+        )
 
-    new_members = (
-        update.message.new_chat_members
-        or []
+
+async def welcome_chat_member_update(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """Welcome users when their chat membership changes to a joined state."""
+    change = update.chat_member
+    if not change:
+        return
+
+    old_member = change.old_chat_member
+    new_member = change.new_chat_member
+    old_status = old_member.status
+    new_status = new_member.status
+
+    was_member = (
+        old_status in ("member", "administrator", "creator")
+        or (old_status == "restricted" and old_member.is_member)
+    )
+    is_member = (
+        new_status in ("member", "administrator", "creator")
+        or (new_status == "restricted" and new_member.is_member)
     )
 
-    for member in new_members:
+    if was_member or not is_member:
+        return
 
-        if member.id == context.bot.id:
-            continue
-
-        name = (
-            member.first_name
-            or member.username
-            or "Friend"
-        )
-
-        welcome_text = (
-            f"🥹💗 Welcome {name}, 𝐓ᴜᴍ 𝐀ᴀ 𝐆ᴀʏᴇ! 🌸🧸"
-        )
-
-        name_offset = len("🥹💗 Welcome ".encode("utf-16-le")) // 2
-        name_length = len(name.encode("utf-16-le")) // 2
-
-        await update.message.reply_text(
-            welcome_text,
-            entities=[
-                MessageEntity(
-                    type=MessageEntity.TEXT_MENTION,
-                    offset=name_offset,
-                    length=name_length,
-                    user=member,
-                )
-            ],
-        )
+    await _send_welcome_message(
+        change.chat,
+        new_member.user,
+        context,
+    )
 
 
 # ==========================================================
