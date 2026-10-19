@@ -299,7 +299,7 @@ pending_ai_tools = {}
 
 WELCOME_IMAGE_URL = (
     "https://raw.githubusercontent.com/"
-    "AashishTechs/Deep-Emotion/main/Welcome.jpg?v=2"
+    "AashishTechs/Deep-Emotion/main/Welcome.jpg?v=3"
 )
 
 
@@ -407,7 +407,7 @@ HELP_SECTION_TEXT = {
         "/game <truth|dare|wyr|joke> — Play a game\n"
         "/memory — View saved memories\n"
         "/forget <ID> — Delete one memory\n"
-        "/forget_all — Delete all memories\n"
+        "/forget\\_all — Delete all memories\n"
         "/clear — Clear chat history\n"
         "/stats — View your stats\n"
         "/privacy — Privacy information\n\n"
@@ -498,7 +498,6 @@ async def start(
 # ==========================================================
 # HELP
 # ==========================================================
-
 async def help_command(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -998,7 +997,6 @@ async def chat_message(
     # ------------------------------------------------------
     # STEP 6 — Selected AI tool
     # ------------------------------------------------------
-
     tool_key = (
         chat.id,
         user.id,
@@ -1497,7 +1495,6 @@ async def button_handler(
                 getattr(context.bot, "username", None)
             ),
         )
-
     if data in {"home", "back"}:
         await show_home()
         return
