@@ -52,6 +52,7 @@ from bot.database import (
     get_group_context,
     clear_group_context,
     count_group_messages,
+    get_broadcast_groups,
 )
 
 
@@ -832,6 +833,66 @@ async def stats(
         f"👥 Group context messages: {group_messages}",
         parse_mode="Markdown",
     )
+
+
+# ==========================================================
+# GROUPS — RESTRICTED TO OWNER + @AASHISH_0FFICIAL
+# ==========================================================
+
+async def groups_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    message = update.effective_message
+    user = update.effective_user
+    chat = update.effective_chat
+
+    if not message or not user or not chat:
+        return
+
+    # Keep this private: group names and IDs are administrative information.
+    if chat.type != "private":
+        await message.reply_text(
+            "🔒 /groups sirf bot ke private chat mein use ho sakta hai."
+        )
+        return
+
+    is_owner = bool(OWNER_ID and user.id == OWNER_ID)
+    is_allowed_username = (user.username or "").casefold() == "aashish_0fficial"
+    if not (is_owner or is_allowed_username):
+        await message.reply_text("⛔ Ye command sirf authorized users ke liye hai.")
+        return
+
+    group_ids = await get_broadcast_groups()
+    if not group_ids:
+        await message.reply_text(
+            "👥 Abhi database mein koi registered group nahi mila."
+        )
+        return
+
+    lines = [f"👥 **Deep Emotion — Registered Groups ({len(group_ids)})**", ""]
+    for index, group_id in enumerate(group_ids, start=1):
+        try:
+            group = await context.bot.get_chat(group_id)
+            title = group.title or "Unnamed group"
+            lines.append(f"{index}. **{title}**\n   ID: `{group_id}`")
+        except Exception as exc:
+            # Retain the registry entry; don't silently delete data from a read command.
+            lines.append(f"{index}. **Group name unavailable**\n   ID: `{group_id}`")
+            logger.warning("Could not fetch group %s for /groups: %s", group_id, exc)
+
+    # Telegram limits a message to 4096 characters; send safe-sized chunks.
+    header = lines[:2]
+    chunk = "\n".join(header)
+    for line in lines[2:]:
+        candidate = f"{chunk}\n{line}" if chunk else line
+        if len(candidate) > 3500:
+            await message.reply_text(chunk, parse_mode="Markdown")
+            chunk = line
+        else:
+            chunk = candidate
+    if chunk:
+        await message.reply_text(chunk, parse_mode="Markdown")
 
 
 # ==========================================================
