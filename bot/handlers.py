@@ -1450,7 +1450,7 @@ async def welcome_new_member(
             f"🥹💗 Welcome {name}, 𝐓ᴜᴍ 𝐀ᴀ 𝐆ᴀʏᴇ! 🌸🧸"
         )
 
-        name_offset = len("👋 Welcome ".encode("utf-16-le")) // 2
+        name_offset = len("🥹💗 Welcome ".encode("utf-16-le")) // 2
         name_length = len(name.encode("utf-16-le")) // 2
 
         await update.message.reply_text(
@@ -1500,7 +1500,7 @@ async def goodbye_member(
         f"🥺💔 Goodbye {name}, 𝐓ᴜᴍ 𝐂ʜᴀʟᴇ 𝐆ᴀʏᴇ? 🌷🫶"
     )
 
-    name_offset = len("👋 ".encode("utf-16-le")) // 2
+    name_offset = len("🥺💔 Goodbye ".encode("utf-16-le")) // 2
     name_length = len(name.encode("utf-16-le")) // 2
 
     await update.message.reply_text(
@@ -1529,7 +1529,7 @@ async def join_request_notification(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-    """Notify all configured owners about a pending Telegram group join request."""
+    """Post a join-request card in the group where the request was made."""
     request = update.chat_join_request
     if not request:
         return
@@ -1550,13 +1550,15 @@ async def join_request_notification(
 
     notification = (
         "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\n\n"
+        f"👥 <b>Group:</b> {html.escape(chat.title or str(chat.id))}\n\n"
         "╭━━━「 📨 <b>𝐑ᴇǫᴜᴇsᴛ 𝐃ᴇᴛᴀɪʟs</b> 」━━━╮\n\n"
         f"👤 <b>Name:</b> {safe_name}\n"
-        f"🔗 <b>Mention:</b> {mention}\n"
+        f"🔗 <b>Profile:</b> {mention}\n"
         f"🆔 <b>User ID:</b> <code>{user.id}</code>\n"
         f"📛 <b>Username:</b> {username}\n"
         f"🛡️ <b>Scam Status:</b> {scam_status}\n\n"
-        "╰━━━━━━━━━━━━━━━━━━━━╯"
+        "╰━━━━━━━━━━━━━━━━━━━━╯\n\n"
+        "👇 <b>Group admin/owner, choose an action:</b>"
     )
     keyboard = InlineKeyboardMarkup([[
         InlineKeyboardButton(
@@ -1569,32 +1571,21 @@ async def join_request_notification(
         ),
     ]])
 
-    if not JOIN_REQUEST_AUTHORIZED_IDS:
-        print("Join request notification not sent: OWNER_ID is missing and no recipients are configured.")
-        return
-
-    delivered = []
-    for recipient_id in sorted(JOIN_REQUEST_AUTHORIZED_IDS):
-        try:
-            await context.bot.send_message(
-                chat_id=recipient_id,
-                text=notification,
-                parse_mode="HTML",
-                reply_markup=keyboard,
-            )
-            delivered.append(recipient_id)
-        except Exception as exc:
-            # Keep the exact Telegram API reason in VPS logs for diagnosis.
-            print(
-                f"Join request notification failed: group_id={chat.id}, "
-                f"requester_id={user.id}, recipient_id={recipient_id}, "
-                f"error={type(exc).__name__}: {exc}"
-            )
-
-    if delivered:
+    try:
+        await context.bot.send_message(
+            chat_id=chat.id,
+            text=notification,
+            parse_mode="HTML",
+            reply_markup=keyboard,
+        )
         print(
-            f"Join request notification delivered: group_id={chat.id}, "
-            f"requester_id={user.id}, recipient_ids={delivered}"
+            f"Join request card posted in group: group_id={chat.id}, "
+            f"requester_id={user.id}"
+        )
+    except Exception as exc:
+        print(
+            f"Join request group notification failed: group_id={chat.id}, "
+            f"requester_id={user.id}, error={type(exc).__name__}: {exc}"
         )
 
 
@@ -1602,13 +1593,9 @@ async def join_request_callback(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-    """Approve or decline a pending request; callbacks are owner-only."""
+    """Let an actual administrator of the target group approve/decline."""
     query = update.callback_query
     if not query or not query.data:
-        return
-
-    if query.from_user.id not in JOIN_REQUEST_AUTHORIZED_IDS:
-        await query.answer("You are not allowed to manage join requests.", show_alert=True)
         return
 
     try:
@@ -1622,30 +1609,70 @@ async def join_request_callback(
         await query.answer("Invalid request data.", show_alert=True)
         return
 
+    # The buttons are posted in the target group. Only that group's owner/admin
+    # may act, regardless of whether their ID is listed in OWNER_ID.
+    message = query.message
+    if not message or message.chat.id != chat_id:
+        await query.answer("Use the buttons in the group where this request was posted.", show_alert=True)
+        return
+
+    try:
+        member = await context.bot.get_chat_member(
+            chat_id=chat_id,
+            user_id=query.from_user.id,
+        )
+        if member.status not in {"administrator", "creator"}:
+            await query.answer("Only this group's admins/owner can manage requests.", show_alert=True)
+            return
+        if member.status == "administrator" and not getattr(member, "can_invite_users", False):
+            await query.answer("You need the invite/manage join requests permission.", show_alert=True)
+            return
+    except Exception as exc:
+        print(
+            f"Join request admin check failed: group_id={chat_id}, "
+            f"admin_id={query.from_user.id}, error={type(exc).__name__}: {exc}"
+        )
+        await query.answer("Could not verify your admin permission. Try again.", show_alert=True)
+        return
+
     try:
         if action == "approve":
             await context.bot.approve_chat_join_request(
                 chat_id=chat_id,
                 user_id=user_id,
             )
-            result_text = "Request accepted."
+            result_text = "✅ Request accepted — member can join."
+            log_action = "accepted"
         else:
             await context.bot.decline_chat_join_request(
                 chat_id=chat_id,
                 user_id=user_id,
             )
-            result_text = "Request declined."
+            result_text = "❌ Request declined."
+            log_action = "declined"
 
         await query.answer(result_text)
-        # Keep the original notification intact; remove buttons once handled.
+        # Keep the request card visible in the group, but prevent repeat clicks.
         try:
-            await query.edit_message_reply_markup(reply_markup=None)
-        except Exception:
-            pass
+            original = message.text_html or message.text or "Join request processed."
+            await query.edit_message_text(
+                text=f"{original}\n\n<b>{html.escape(result_text)}</b>",
+                parse_mode="HTML",
+                reply_markup=None,
+            )
+        except Exception as exc:
+            print(f"Could not update join request card: {type(exc).__name__}: {exc}")
+        print(
+            f"Join request {log_action}: group_id={chat_id}, "
+            f"requester_id={user_id}, moderator_id={query.from_user.id}"
+        )
     except Exception as exc:
-        print("Join request action failed:", repr(exc))
+        print(
+            f"Join request action failed: group_id={chat_id}, requester_id={user_id}, "
+            f"moderator_id={query.from_user.id}, error={type(exc).__name__}: {exc}"
+        )
         await query.answer(
-            "Could not process this request. It may already be handled or the bot may lack permissions.",
+            "Could not process this request. It may already be handled, or the bot lacks permission.",
             show_alert=True,
         )
 
