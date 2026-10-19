@@ -836,7 +836,7 @@ async def stats(
 
 
 # ==========================================================
-# GROUPS — RESTRICTED TO OWNER + @AASHISH_0FFICIAL
+# GROUPS — RESTRICTED TO OWNER + AUTHORIZED USER ID
 # ==========================================================
 
 async def groups_command(
@@ -858,8 +858,8 @@ async def groups_command(
         return
 
     is_owner = bool(OWNER_ID and user.id == OWNER_ID)
-    is_allowed_username = (user.username or "").casefold() == "aashish_0fficial"
-    if not (is_owner or is_allowed_username):
+    is_second_authorized_user = user.id == 8877757796
+    if not (is_owner or is_second_authorized_user):
         await message.reply_text("⛔ Ye command sirf authorized users ke liye hai.")
         return
 
