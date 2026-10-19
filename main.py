@@ -26,6 +26,7 @@ from bot.handlers import (
     game_command,
     clear_memory,
     stats,
+    groups_command,
     chat_message,
     memory_command,
     forget_memory,
@@ -272,6 +273,14 @@ async def main():
         )
     )
 
+    # Restricted to the owner and @Aashish_0fficial inside private chat.
+    application.add_handler(
+        CommandHandler(
+            "groups",
+            groups_command,
+        )
+    )
+
     application.add_handler(
         CommandHandler(
             "privacy",
@@ -433,6 +442,7 @@ async def main():
             BotCommand("stats", "View bot statistics"),
             BotCommand("privacy", "Learn about privacy and data"),
             BotCommand("broadcast", "Broadcast to registered groups"),
+            BotCommand("groups", "List registered groups"),
         ],
             scope=BotCommandScopeChat(chat_id=OWNER_ID),
         )
