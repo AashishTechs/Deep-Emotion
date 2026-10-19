@@ -4,18 +4,16 @@ import os
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from telegram import BotCommand, BotCommandScopeChat, Update
+from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
     MessageHandler,
     CallbackQueryHandler,
-    ChatJoinRequestHandler,
-    ChatMemberHandler,
     filters,
 )
 
-from config import BOT_TOKEN, OWNER_ID
+from config import BOT_TOKEN
 
 from bot.database import init_db, cleanup_old_data
 from bot.proactive import proactive_group_loop
@@ -27,21 +25,16 @@ from bot.handlers import (
     game_command,
     clear_memory,
     stats,
-    groups_command,
     chat_message,
     memory_command,
     forget_memory,
     forget_all,
     welcome_new_member,
-    welcome_chat_member_update,
     goodbye_member,
-    goodbye_chat_member_update,
     moderate_message,
     button_handler,
     voice_message,
     privacy_command,
-    join_request_notification,
-    join_request_callback,
 )
 
 from bot.truth_dare import (
@@ -49,12 +42,6 @@ from bot.truth_dare import (
     dare_command,
     truth_dare_command,
     truth_dare_callback,
-)
-
-from bot.broadcast import (
-    broadcast_command,
-    track_group_message,
-    track_bot_group_membership,
 )
 
 
@@ -170,30 +157,6 @@ async def main():
     # COMMAND HANDLERS
     # ======================================================
 
-    # Owner-only broadcast; the command itself enforces owner + private chat.
-    application.add_handler(
-        CommandHandler("broadcast", broadcast_command)
-    )
-
-    # Track groups as soon as the bot is added/removed. The low-priority
-    # message tracker also discovers existing groups when updates are visible.
-    application.add_handler(
-        ChatMemberHandler(
-            track_bot_group_membership,
-            ChatMemberHandler.MY_CHAT_MEMBER,
-        ),
-        group=-1,
-    )
-
-    application.add_handler(
-        MessageHandler(
-            filters.ChatType.GROUPS,
-            track_group_message,
-        ),
-        group=-1,
-    )
-
-
     application.add_handler(
         CommandHandler(
             "start",
@@ -278,33 +241,10 @@ async def main():
         )
     )
 
-    # Restricted to the owner and @Aashish_0fficial inside private chat.
-    application.add_handler(
-        CommandHandler(
-            "groups",
-            groups_command,
-        )
-    )
-
     application.add_handler(
         CommandHandler(
             "privacy",
             privacy_command,
-        )
-    )
-
-    # ======================================================
-    # GROUP JOIN REQUESTS
-    # ======================================================
-
-    application.add_handler(
-        ChatJoinRequestHandler(join_request_notification)
-    )
-
-    application.add_handler(
-        CallbackQueryHandler(
-            join_request_callback,
-            pattern=r"^joinreq:",
         )
     )
 
@@ -340,15 +280,6 @@ async def main():
         )
     )
 
-    # Join-request approvals may arrive as chat-member status updates rather
-    # than NEW_CHAT_MEMBERS service messages. The handler deduplicates both.
-    application.add_handler(
-        ChatMemberHandler(
-            welcome_chat_member_update,
-            ChatMemberHandler.CHAT_MEMBER,
-        )
-    )
-
     # ======================================================
     # GOODBYE MEMBERS
     # ======================================================
@@ -358,16 +289,6 @@ async def main():
             filters.StatusUpdate.LEFT_CHAT_MEMBER,
             goodbye_member
         )
-    )
-
-    # Fallback for groups where Telegram doesn't send a LEFT_CHAT_MEMBER
-    # service message. Chat-member updates require the bot to be an admin.
-    application.add_handler(
-        ChatMemberHandler(
-            goodbye_chat_member_update,
-            ChatMemberHandler.CHAT_MEMBER,
-        ),
-        group=1,
     )
 
     # ======================================================
@@ -442,64 +363,6 @@ async def main():
     )
 
     await application.initialize()
-
-    # Register the public command list first. Per-chat command registration can
-    # fail if Telegram does not yet know a user's private chat; that must not
-    # prevent the bot itself from starting.
-    public_commands = [
-        BotCommand("start", "Start Deep Emotion"),
-        BotCommand("help", "Show available commands"),
-        BotCommand("ask", "Ask the AI a question"),
-        BotCommand("game", "Play a chat game"),
-        BotCommand("truth", "Get a truth question"),
-        BotCommand("dare", "Get a dare challenge"),
-        BotCommand("td", "Start Truth or Dare"),
-        BotCommand("memory", "View your saved memory"),
-        BotCommand("forget", "Forget a saved memory"),
-        BotCommand("forget_all", "Delete all your saved memories"),
-        BotCommand("clear", "Clear the current conversation"),
-        BotCommand("stats", "View bot statistics"),
-        BotCommand("privacy", "Learn about privacy and data"),
-    ]
-
-    try:
-        await application.bot.set_my_commands(public_commands)
-        logger.info("Public Telegram command menu registered.")
-    except Exception:
-        logger.exception("Could not register public Telegram commands.")
-
-    # Owner gets the private /broadcast and /groups commands.
-    if OWNER_ID:
-        try:
-            await application.bot.set_my_commands(
-                public_commands + [
-                    BotCommand("broadcast", "Broadcast to registered groups"),
-                    BotCommand("groups", "List registered groups"),
-                ],
-                scope=BotCommandScopeChat(chat_id=OWNER_ID),
-            )
-            logger.info("Owner command menu registered for OWNER_ID=%s.", OWNER_ID)
-        except Exception:
-            logger.exception(
-                "Could not register owner command menu for OWNER_ID=%s.", OWNER_ID
-            )
-    else:
-        logger.error("OWNER_ID is 0 or missing; owner-specific commands were not registered.")
-
-    # The second authorized account gets /groups, but not /broadcast.
-    try:
-        await application.bot.set_my_commands(
-            public_commands + [
-                BotCommand("groups", "List registered groups"),
-            ],
-            scope=BotCommandScopeChat(chat_id=8877757796),
-        )
-        logger.info("Authorized /groups command menu registered for user ID 8877757796.")
-    except Exception:
-        logger.exception(
-            "Could not register the /groups command menu for user ID 8877757796. "
-            "That user may need to open the bot and press /start first."
-        )
 
     await application.start()
 

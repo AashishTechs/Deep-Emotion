@@ -36,6 +36,8 @@ from bot.ai import (
     transcribe_voice,
 )
 
+from bot.response_cache import get_cached_response
+
 from bot.database import (
     add_message,
     get_history,
@@ -52,7 +54,6 @@ from bot.database import (
     get_group_context,
     clear_group_context,
     count_group_messages,
-    get_broadcast_groups,
 )
 
 
@@ -300,7 +301,7 @@ pending_ai_tools = {}
 
 WELCOME_IMAGE_URL = (
     "https://raw.githubusercontent.com/"
-    "AashishTechs/Deep-Emotion/main/Welcome.jpg?v=3"
+    "AashishTechs/Deep-Emotion/main/Welcome.jpg?v=2"
 )
 
 
@@ -404,11 +405,11 @@ HELP_SECTION_TEXT = {
         "📖 **Commands**\n\n"
         "/start — Welcome panel\n"
         "/help — Help & Commands\n"
-        "/ask question — Ask AI\n"
-        "/game truth | dare | wyr | joke — Play a game\n"
+        "/ask <question> — Ask AI\n"
+        "/game <truth|dare|wyr|joke> — Play a game\n"
         "/memory — View saved memories\n"
-        "/forget ID — Delete one memory\n"
-        "/forget\\_all — Delete all memories\n"
+        "/forget <ID> — Delete one memory\n"
+        "/forget_all — Delete all memories\n"
         "/clear — Clear chat history\n"
         "/stats — View your stats\n"
         "/privacy — Privacy information\n\n"
@@ -499,6 +500,7 @@ async def start(
 # ==========================================================
 # HELP
 # ==========================================================
+
 async def help_command(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -836,90 +838,6 @@ async def stats(
 
 
 # ==========================================================
-# GROUPS — RESTRICTED TO OWNER + AUTHORIZED USER ID
-# ==========================================================
-
-async def groups_command(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    message = update.effective_message
-    user = update.effective_user
-    chat = update.effective_chat
-
-    if not message or not user or not chat:
-        return
-
-    # Keep this private: group names and IDs are administrative information.
-    if chat.type != "private":
-        await message.reply_text(
-            "🔒 /groups sirf bot ke private chat mein use ho sakta hai."
-        )
-        return
-
-    is_owner = bool(OWNER_ID and user.id == OWNER_ID)
-    is_second_authorized_user = user.id == 8877757796
-    if not (is_owner or is_second_authorized_user):
-        await message.reply_text("⛔ Ye command sirf authorized users ke liye hai.")
-        return
-
-    group_ids = await get_broadcast_groups()
-    if not group_ids:
-        await message.reply_text(
-            "👥 Abhi database mein koi registered group nahi mila."
-        )
-        return
-
-    digit_map = str.maketrans("0123456789", "𝟎𝟏𝟐𝟑𝟒𝟓𝟔𝟕𝟖𝟗")
-    total = str(len(group_ids)).zfill(2).translate(digit_map)
-
-    header = (
-        "💗 <b>𝐃𝐄𝐄𝐏 𝐄𝐌𝐎𝐓𝐈𝐎𝐍</b>\n"
-        "╭━━━━━━━━━━━━━━━━━━╮\n"
-        "　🗂️ <b>𝐑𝐄𝐆𝐈𝐒𝐓𝐄𝐑𝐄𝐃 𝐆𝐑𝐎𝐔𝐏𝐒</b>\n"
-        "╰━━━━━━━━━━━━━━━━━━╯\n\n"
-        f"📊 Total Groups: {total}\n"
-    )
-    footer = "\n╰━━━━━━━━━━━━━━━━━━╯\n 🌸 <b>𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐃𝐞𝐞𝐩 𝐄𝐦𝐨𝐭𝐢𝐨𝐧</b>"
-
-    entries = []
-    for index, group_id in enumerate(group_ids, start=1):
-        try:
-            group = await context.bot.get_chat(group_id)
-            title = html.escape(group.title or "Name Unavailable")
-            marker = "💞"
-        except Exception as exc:
-            # Retain registry entries; this command must never delete group data.
-            title = "Name Unavailable"
-            marker = "🤍"
-            print(f"Could not fetch group {group_id} for /groups: {exc}")
-
-        entries.append(
-            f"{marker} <b>GROUP {index:02d}</b>\n"
-            f" 🏷️ {title}\n"
-            f" 🆔 <code>{group_id}</code>"
-        )
-
-    # Send as one nicely formatted message when possible, splitting only if
-    # Telegram's message-size limit would otherwise be exceeded.
-    chunks = []
-    current = header
-    for entry in entries:
-        candidate = f"{current}\n\n{entry}"
-        if len(candidate) + len(footer) > 3900 and current != header:
-            chunks.append(current + footer)
-            current = header + "\n"
-            candidate = f"{current}{entry}"
-        current = candidate
-
-    if current:
-        chunks.append(current + footer)
-
-    for chunk in chunks:
-        await message.reply_text(chunk, parse_mode="HTML")
-
-
-# ==========================================================
 # SAVE GROUP CONTEXT
 # ==========================================================
 
@@ -1082,6 +1000,7 @@ async def chat_message(
     # ------------------------------------------------------
     # STEP 6 — Selected AI tool
     # ------------------------------------------------------
+
     tool_key = (
         chat.id,
         user.id,
@@ -1208,6 +1127,28 @@ async def process_ai(
             "supergroup",
         )
     )
+
+    # ------------------------------------------------------
+    # SAFE RESPONSE CACHE
+    # Generic greetings/acknowledgements can be answered without Gemini.
+    # Never cache personal, emotional, or context-dependent conversations.
+    # ------------------------------------------------------
+    cached_reply = get_cached_response(text)
+    if cached_reply:
+        await add_message(
+            chat_id,
+            user_id,
+            "user",
+            text,
+        )
+        await add_message(
+            chat_id,
+            user_id,
+            "model",
+            cached_reply,
+        )
+        await update.message.reply_text(cached_reply)
+        return
 
     # ------------------------------------------------------
     # History
@@ -1420,377 +1361,109 @@ async def send_text_with_user_mentions(
 # WELCOME
 # ==========================================================
 
-async def _send_welcome_message(
-    chat,
-    member,
-    context: ContextTypes.DEFAULT_TYPE,
-    reply_to_message=None,
-):
-    """Send one welcome per user/chat even if Telegram emits both join updates."""
-    if not chat or not member or member.id == context.bot.id:
-        return
-
-    recent = context.chat_data.setdefault("_recent_welcome_messages", {})
-    now = time.monotonic()
-
-    # Keep the cache small and prevent duplicate welcomes from the two update types.
-    for user_id, sent_at in list(recent.items()):
-        if now - sent_at > 60:
-            recent.pop(user_id, None)
-
-    if member.id in recent:
-        return
-
-    name = member.first_name or member.username or "Friend"
-    welcome_text = f"🥹💗 Welcome {name}, 𝐓ᴜᴍ 𝐀ᴀ 𝐆ᴀʏᴇ! 🌸🧸"
-    name_offset = len("🥹💗 Welcome ".encode("utf-16-le")) // 2
-    name_length = len(name.encode("utf-16-le")) // 2
-    entities = [
-        MessageEntity(
-            type=MessageEntity.TEXT_MENTION,
-            offset=name_offset,
-            length=name_length,
-            user=member,
-        )
-    ]
-
-    if reply_to_message:
-        await reply_to_message.reply_text(welcome_text, entities=entities)
-    else:
-        await context.bot.send_message(
-            chat_id=chat.id,
-            text=welcome_text,
-            entities=entities,
-        )
-
-    recent[member.id] = now
-
-
 async def welcome_new_member(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-    """Handle Telegram's NEW_CHAT_MEMBERS service message."""
+
     if not update.message:
         return
 
     chat = update.effective_chat
-    for member in update.message.new_chat_members or []:
-        await _send_welcome_message(
-            chat,
-            member,
-            context,
-            reply_to_message=update.message,
+
+    new_members = (
+        update.message.new_chat_members
+        or []
+    )
+
+    for member in new_members:
+
+        if member.id == context.bot.id:
+            continue
+
+        name = (
+            member.first_name
+            or member.username
+            or "Friend"
         )
 
+        welcome_text = (
+            f"👋 Welcome {name}!\n\n"
+            f"💜 Welcome to {chat.title or 'our group'}!\n"
+            f"✨ Glad to have you here.\n\n"
+            f"💬 Feel free to chat with everyone "
+            f"and enjoy your time here! 🌸"
+        )
 
-async def welcome_chat_member_update(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    """Welcome users when their chat membership changes to a joined state."""
-    change = update.chat_member
-    if not change:
-        return
+        name_offset = len("👋 Welcome ".encode("utf-16-le")) // 2
+        name_length = len(name.encode("utf-16-le")) // 2
 
-    old_member = change.old_chat_member
-    new_member = change.new_chat_member
-    old_status = old_member.status
-    new_status = new_member.status
-
-    was_member = (
-        old_status in ("member", "administrator", "creator")
-        or (old_status == "restricted" and old_member.is_member)
-    )
-    is_member = (
-        new_status in ("member", "administrator", "creator")
-        or (new_status == "restricted" and new_member.is_member)
-    )
-
-    if was_member or not is_member:
-        return
-
-    await _send_welcome_message(
-        change.chat,
-        new_member.user,
-        context,
-    )
+        await update.message.reply_text(
+            welcome_text,
+            entities=[
+                MessageEntity(
+                    type=MessageEntity.TEXT_MENTION,
+                    offset=name_offset,
+                    length=name_length,
+                    user=member,
+                )
+            ],
+        )
 
 
 # ==========================================================
 # GOODBYE
 # ==========================================================
 
-# Telegram can deliver a departure as a LEFT_CHAT_MEMBER service message,
-# a chat_member status update, or both. Deduplicate the two paths briefly.
-_recent_goodbyes = {}
-
-
-async def _send_goodbye_message(chat, member, context, reply_to_message=None):
-    if not chat or not member or member.id == context.bot.id:
-        return
-
-    now = time.monotonic()
-    key = (chat.id, member.id)
-    last_sent = _recent_goodbyes.get(key)
-    if last_sent is not None and now - last_sent < 30:
-        return
-
-    # Keep the cache bounded.
-    for old_key, timestamp in list(_recent_goodbyes.items()):
-        if now - timestamp >= 30:
-            _recent_goodbyes.pop(old_key, None)
-
-    name = member.first_name or member.username or "Friend"
-    goodbye_text = f"🥺💔 Goodbye {name}, 𝐓ᴜᴍ 𝐂ʜᴀʟᴇ 𝐆ᴀʏᴇ? 🌷🫶"
-    name_offset = len("🥺💔 Goodbye ".encode("utf-16-le")) // 2
-    name_length = len(name.encode("utf-16-le")) // 2
-
-    try:
-        if reply_to_message:
-            await reply_to_message.reply_text(
-                goodbye_text,
-                entities=[
-                    MessageEntity(
-                        type=MessageEntity.TEXT_MENTION,
-                        offset=name_offset,
-                        length=name_length,
-                        user=member,
-                    )
-                ],
-            )
-        else:
-            await context.bot.send_message(
-                chat_id=chat.id,
-                text=goodbye_text,
-                entities=[
-                    MessageEntity(
-                        type=MessageEntity.TEXT_MENTION,
-                        offset=name_offset,
-                        length=name_length,
-                        user=member,
-                    )
-                ],
-            )
-        _recent_goodbyes[key] = now
-    except Exception as exc:
-        print(
-            f"Goodbye message failed: chat_id={chat.id}, "
-            f"member_id={member.id}, error={type(exc).__name__}: {exc}"
-        )
-
-
 async def goodbye_member(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-    """Handle Telegram's LEFT_CHAT_MEMBER service message."""
-    message = update.message
-    if not message or not message.left_chat_member:
+
+    if not update.message:
         return
 
-    await _send_goodbye_message(
-        update.effective_chat,
-        message.left_chat_member,
-        context,
-        reply_to_message=message,
+    chat = update.effective_chat
+
+    member = (
+        update.message.left_chat_member
     )
 
-
-async def goodbye_chat_member_update(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    """Fallback for membership status changes when no service message arrives."""
-    change = update.chat_member
-    if not change:
+    if not member:
         return
 
-    old_member = change.old_chat_member
-    new_member = change.new_chat_member
-    old_status = old_member.status
-    new_status = new_member.status
-
-    was_member = (
-        old_status in ("member", "administrator", "creator")
-        or (old_status == "restricted" and old_member.is_member)
-    )
-    is_member = (
-        new_status in ("member", "administrator", "creator")
-        or (new_status == "restricted" and new_member.is_member)
-    )
-
-    if not was_member or is_member:
+    if member.id == context.bot.id:
         return
 
-    await _send_goodbye_message(
-        change.chat,
-        new_member.user,
-        context,
+    name = (
+        member.first_name
+        or member.username
+        or "Friend"
+    )
+
+    goodbye_text = (
+        f"👋 {name} has left the group.\n\n"
+        f"💔 We'll miss you!\n"
+        f"Take care and have a great day. 🌸"
+    )
+
+    name_offset = len("👋 ".encode("utf-16-le")) // 2
+    name_length = len(name.encode("utf-16-le")) // 2
+
+    await update.message.reply_text(
+        goodbye_text,
+        entities=[
+            MessageEntity(
+                type=MessageEntity.TEXT_MENTION,
+                offset=name_offset,
+                length=name_length,
+                user=member,
+            )
+        ],
     )
 
 
 # ==========================================================
-
-# ==========================================================
-# JOIN REQUEST NOTIFICATIONS
-# ==========================================================
-
-JOIN_REQUEST_AUTHORIZED_IDS = {user_id for user_id in (OWNER_ID, 8877757796) if user_id > 0}
-
-
-async def join_request_notification(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    """Post a join-request card in the group where the request was made."""
-    request = update.chat_join_request
-    if not request:
-        return
-
-    user = request.from_user
-    chat = request.chat
-    display_name = " ".join(
-        part for part in (user.first_name, user.last_name) if part
-    ) or user.username or "Friend"
-    safe_name = html.escape(display_name)
-    mention = f'<a href="tg://user?id={user.id}">{safe_name}</a>'
-    username = f"@{html.escape(user.username)}" if user.username else "Not set"
-    scam_status = (
-        "⚠️ Reported as Scam"
-        if getattr(user, "is_scam", False)
-        else "✅ Not Reported as Scam"
-    )
-
-    notification = (
-        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\n\n"
-        f"👥 <b>Group:</b> {html.escape(chat.title or str(chat.id))}\n\n"
-        "╭━━━「 📨 <b>𝐑ᴇǫᴜᴇsᴛ 𝐃ᴇᴛᴀɪʟs</b> 」━━━╮\n\n"
-        f"👤 <b>Name:</b> {safe_name}\n"
-        f"🔗 <b>Profile:</b> {mention}\n"
-        f"🆔 <b>User ID:</b> <code>{user.id}</code>\n"
-        f"📛 <b>Username:</b> {username}\n"
-        f"🛡️ <b>Scam Status:</b> {scam_status}\n\n"
-        "╰━━━━━━━━━━━━━━━━━━━━╯\n\n"
-        "👇 <b>Group admin/owner, choose an action:</b>"
-    )
-    keyboard = InlineKeyboardMarkup([[
-        InlineKeyboardButton(
-            "✅ Accept",
-            callback_data=f"joinreq:approve:{chat.id}:{user.id}",
-        ),
-        InlineKeyboardButton(
-            "❌ Decline",
-            callback_data=f"joinreq:decline:{chat.id}:{user.id}",
-        ),
-    ]])
-
-    try:
-        await context.bot.send_message(
-            chat_id=chat.id,
-            text=notification,
-            parse_mode="HTML",
-            reply_markup=keyboard,
-        )
-        print(
-            f"Join request card posted in group: group_id={chat.id}, "
-            f"requester_id={user.id}"
-        )
-    except Exception as exc:
-        print(
-            f"Join request group notification failed: group_id={chat.id}, "
-            f"requester_id={user.id}, error={type(exc).__name__}: {exc}"
-        )
-
-
-async def join_request_callback(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    """Let an actual administrator of the target group approve/decline."""
-    query = update.callback_query
-    if not query or not query.data:
-        return
-
-    try:
-        prefix, action, chat_id_text, user_id_text = query.data.split(":", 3)
-        if prefix != "joinreq" or action not in {"approve", "decline"}:
-            await query.answer("Invalid request action.", show_alert=True)
-            return
-        chat_id = int(chat_id_text)
-        user_id = int(user_id_text)
-    except (ValueError, TypeError):
-        await query.answer("Invalid request data.", show_alert=True)
-        return
-
-    # The buttons are posted in the target group. Only that group's owner/admin
-    # may act, regardless of whether their ID is listed in OWNER_ID.
-    message = query.message
-    if not message or message.chat.id != chat_id:
-        await query.answer("Use the buttons in the group where this request was posted.", show_alert=True)
-        return
-
-    try:
-        member = await context.bot.get_chat_member(
-            chat_id=chat_id,
-            user_id=query.from_user.id,
-        )
-        if member.status not in {"administrator", "creator"}:
-            await query.answer("Only this group's admins/owner can manage requests.", show_alert=True)
-            return
-        if member.status == "administrator" and not getattr(member, "can_invite_users", False):
-            await query.answer("You need the invite/manage join requests permission.", show_alert=True)
-            return
-    except Exception as exc:
-        print(
-            f"Join request admin check failed: group_id={chat_id}, "
-            f"admin_id={query.from_user.id}, error={type(exc).__name__}: {exc}"
-        )
-        await query.answer("Could not verify your admin permission. Try again.", show_alert=True)
-        return
-
-    try:
-        if action == "approve":
-            await context.bot.approve_chat_join_request(
-                chat_id=chat_id,
-                user_id=user_id,
-            )
-            result_text = "✅ Request accepted — member can join."
-            log_action = "accepted"
-        else:
-            await context.bot.decline_chat_join_request(
-                chat_id=chat_id,
-                user_id=user_id,
-            )
-            result_text = "❌ Request declined."
-            log_action = "declined"
-
-        await query.answer(result_text)
-        # Keep the request card visible in the group, but prevent repeat clicks.
-        try:
-            original = message.text_html or message.text or "Join request processed."
-            await query.edit_message_text(
-                text=f"{original}\n\n<b>{html.escape(result_text)}</b>",
-                parse_mode="HTML",
-                reply_markup=None,
-            )
-        except Exception as exc:
-            print(f"Could not update join request card: {type(exc).__name__}: {exc}")
-        print(
-            f"Join request {log_action}: group_id={chat_id}, "
-            f"requester_id={user_id}, moderator_id={query.from_user.id}"
-        )
-    except Exception as exc:
-        print(
-            f"Join request action failed: group_id={chat_id}, requester_id={user_id}, "
-            f"moderator_id={query.from_user.id}, error={type(exc).__name__}: {exc}"
-        )
-        await query.answer(
-            "Could not process this request. It may already be handled, or the bot lacks permission.",
-            show_alert=True,
-        )
-
-
 # BUTTON HANDLER
 # ==========================================================
 
@@ -1848,6 +1521,7 @@ async def button_handler(
                 getattr(context.bot, "username", None)
             ),
         )
+
     if data in {"home", "back"}:
         await show_home()
         return

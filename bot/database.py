@@ -95,29 +95,6 @@ async def init_db():
         )
 
         # --------------------------------------------------
-        # Groups eligible for owner-only broadcasts
-        # --------------------------------------------------
-
-        await db.execute(
-            """
-            CREATE TABLE IF NOT EXISTS broadcast_groups (
-                chat_id INTEGER PRIMARY KEY,
-                added_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
-
-        # Recover groups previously seen by the bot before this
-        # registry was introduced. Stale entries are removed when
-        # Telegram reports that the bot can no longer access them.
-        await db.execute(
-            """
-            INSERT OR IGNORE INTO broadcast_groups(chat_id)
-            SELECT DISTINCT chat_id FROM group_messages
-            """
-        )
-
-        # --------------------------------------------------
         # Indexes
         # --------------------------------------------------
 
@@ -811,41 +788,3 @@ async def get_active_group_users(chat_id, limit=30):
         )
         rows = await cursor.fetchall()
     return rows
-
-
-
-# ==========================================================
-# BROADCAST GROUP REGISTRY
-# ==========================================================
-
-async def register_broadcast_group(chat_id):
-    """Remember a group where the bot is currently present."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            """
-            INSERT OR IGNORE INTO broadcast_groups(chat_id)
-            VALUES (?)
-            """,
-            (chat_id,),
-        )
-        await db.commit()
-
-
-async def unregister_broadcast_group(chat_id):
-    """Remove a group from future broadcasts."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "DELETE FROM broadcast_groups WHERE chat_id = ?",
-            (chat_id,),
-        )
-        await db.commit()
-
-
-async def get_broadcast_groups():
-    """Return all registered group and supergroup chat IDs."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute(
-            "SELECT chat_id FROM broadcast_groups ORDER BY added_at, chat_id"
-        )
-        rows = await cursor.fetchall()
-    return [row[0] for row in rows]
