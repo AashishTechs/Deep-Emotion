@@ -1521,49 +1521,112 @@ async def welcome_chat_member_update(
 # GOODBYE
 # ==========================================================
 
+# Telegram can deliver a departure as a LEFT_CHAT_MEMBER service message,
+# a chat_member status update, or both. Deduplicate the two paths briefly.
+_recent_goodbyes = {}
+
+
+async def _send_goodbye_message(chat, member, context, reply_to_message=None):
+    if not chat or not member or member.id == context.bot.id:
+        return
+
+    now = time.monotonic()
+    key = (chat.id, member.id)
+    last_sent = _recent_goodbyes.get(key)
+    if last_sent is not None and now - last_sent < 30:
+        return
+
+    # Keep the cache bounded.
+    for old_key, timestamp in list(_recent_goodbyes.items()):
+        if now - timestamp >= 30:
+            _recent_goodbyes.pop(old_key, None)
+
+    name = member.first_name or member.username or "Friend"
+    goodbye_text = f"🥺💔 Goodbye {name}, 𝐓ᴜᴍ 𝐂ʜᴀʟᴇ 𝐆ᴀʏᴇ? 🌷🫶"
+    name_offset = len("🥺💔 Goodbye ".encode("utf-16-le")) // 2
+    name_length = len(name.encode("utf-16-le")) // 2
+
+    try:
+        if reply_to_message:
+            await reply_to_message.reply_text(
+                goodbye_text,
+                entities=[
+                    MessageEntity(
+                        type=MessageEntity.TEXT_MENTION,
+                        offset=name_offset,
+                        length=name_length,
+                        user=member,
+                    )
+                ],
+            )
+        else:
+            await context.bot.send_message(
+                chat_id=chat.id,
+                text=goodbye_text,
+                entities=[
+                    MessageEntity(
+                        type=MessageEntity.TEXT_MENTION,
+                        offset=name_offset,
+                        length=name_length,
+                        user=member,
+                    )
+                ],
+            )
+        _recent_goodbyes[key] = now
+    except Exception as exc:
+        print(
+            f"Goodbye message failed: chat_id={chat.id}, "
+            f"member_id={member.id}, error={type(exc).__name__}: {exc}"
+        )
+
+
 async def goodbye_member(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-
-    if not update.message:
+    """Handle Telegram's LEFT_CHAT_MEMBER service message."""
+    message = update.message
+    if not message or not message.left_chat_member:
         return
 
-    chat = update.effective_chat
-
-    member = (
-        update.message.left_chat_member
+    await _send_goodbye_message(
+        update.effective_chat,
+        message.left_chat_member,
+        context,
+        reply_to_message=message,
     )
 
-    if not member:
+
+async def goodbye_chat_member_update(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """Fallback for membership status changes when no service message arrives."""
+    change = update.chat_member
+    if not change:
         return
 
-    if member.id == context.bot.id:
+    old_member = change.old_chat_member
+    new_member = change.new_chat_member
+    old_status = old_member.status
+    new_status = new_member.status
+
+    was_member = (
+        old_status in ("member", "administrator", "creator")
+        or (old_status == "restricted" and old_member.is_member)
+    )
+    is_member = (
+        new_status in ("member", "administrator", "creator")
+        or (new_status == "restricted" and new_member.is_member)
+    )
+
+    if not was_member or is_member:
         return
 
-    name = (
-        member.first_name
-        or member.username
-        or "Friend"
-    )
-
-    goodbye_text = (
-        f"🥺💔 Goodbye {name}, 𝐓ᴜᴍ 𝐂ʜᴀʟᴇ 𝐆ᴀʏᴇ? 🌷🫶"
-    )
-
-    name_offset = len("🥺💔 Goodbye ".encode("utf-16-le")) // 2
-    name_length = len(name.encode("utf-16-le")) // 2
-
-    await update.message.reply_text(
-        goodbye_text,
-        entities=[
-            MessageEntity(
-                type=MessageEntity.TEXT_MENTION,
-                offset=name_offset,
-                length=name_length,
-                user=member,
-            )
-        ],
+    await _send_goodbye_message(
+        change.chat,
+        new_member.user,
+        context,
     )
 
 
