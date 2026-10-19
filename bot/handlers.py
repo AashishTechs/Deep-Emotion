@@ -1387,15 +1387,9 @@ async def welcome_new_member(
             or "Friend"
         )
 
-        welcome_text = (
-            f"👋 Welcome {name}!\n\n"
-            f"💜 Welcome to {chat.title or 'our group'}!\n"
-            f"✨ Glad to have you here.\n\n"
-            f"💬 Feel free to chat with everyone "
-            f"and enjoy your time here! 🌸"
-        )
+        welcome_text = f"🥹💗 Welcome {name}, 𝐓ᴜᴍ 𝐀ᴀ 𝐆ᴀʏᴇ! 🌸🧸"
 
-        name_offset = len("👋 Welcome ".encode("utf-16-le")) // 2
+        name_offset = len("🥹💗 Welcome ".encode("utf-16-le")) // 2
         name_length = len(name.encode("utf-16-le")) // 2
 
         await update.message.reply_text(
