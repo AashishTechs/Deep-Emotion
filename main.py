@@ -14,7 +14,7 @@ from telegram.ext import (
     filters,
 )
 
-from config import BOT_TOKEN
+from config import BOT_TOKEN, OWNER_ID
 
 from bot.database import init_db, cleanup_old_data
 from bot.proactive import proactive_group_loop
