@@ -1522,14 +1522,14 @@ async def goodbye_member(
 # JOIN REQUEST NOTIFICATIONS
 # ==========================================================
 
-JOIN_REQUEST_AUTHORIZED_IDS = {OWNER_ID, 8877757796}
+JOIN_REQUEST_AUTHORIZED_IDS = {user_id for user_id in (OWNER_ID, 8877757796) if user_id > 0}
 
 
 async def join_request_notification(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-    """Notify the owner about a pending Telegram group join request."""
+    """Notify all configured owners about a pending Telegram group join request."""
     request = update.chat_join_request
     if not request:
         return
@@ -1549,39 +1549,52 @@ async def join_request_notification(
     )
 
     notification = (
-        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\n\n"
-        "╭━━━「 📨 <b>𝐑ᴇǫᴜᴇsᴛ 𝐃ᴇᴛᴀɪʟs</b> 」━━━╮\n\n"
-        f"👤 <b>Name:</b> {safe_name}\n"
-        f"🔗 <b>Mention:</b> {mention}\n"
-        f"🆔 <b>User ID:</b> <code>{user.id}</code>\n"
-        f"📛 <b>Username:</b> {username}\n"
-        f"🛡️ <b>Scam Status:</b> {scam_status}\n\n"
+        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\\n\\n"
+        "╭━━━「 📨 <b>𝐑ᴇǫᴜᴇsᴛ 𝐃ᴇᴛᴀɪʟs</b> 」━━━╮\\n\\n"
+        f"👤 <b>Name:</b> {safe_name}\\n"
+        f"🔗 <b>Mention:</b> {mention}\\n"
+        f"🆔 <b>User ID:</b> <code>{user.id}</code>\\n"
+        f"📛 <b>Username:</b> {username}\\n"
+        f"🛡️ <b>Scam Status:</b> {scam_status}\\n\\n"
         "╰━━━━━━━━━━━━━━━━━━━━╯"
     )
     keyboard = InlineKeyboardMarkup([[
         InlineKeyboardButton(
-            "Accept",
+            "✅ Accept",
             callback_data=f"joinreq:approve:{chat.id}:{user.id}",
         ),
         InlineKeyboardButton(
-            "Decline",
+            "❌ Decline",
             callback_data=f"joinreq:decline:{chat.id}:{user.id}",
         ),
     ]])
 
-    try:
-        await context.bot.send_message(
-            chat_id=OWNER_ID,
-            text=notification,
-            parse_mode="HTML",
-            reply_markup=keyboard,
-        )
-    except Exception:
+    if not JOIN_REQUEST_AUTHORIZED_IDS:
+        print("Join request notification not sent: OWNER_ID is missing and no recipients are configured.")
+        return
+
+    delivered = []
+    for recipient_id in sorted(JOIN_REQUEST_AUTHORIZED_IDS):
+        try:
+            await context.bot.send_message(
+                chat_id=recipient_id,
+                text=notification,
+                parse_mode="HTML",
+                reply_markup=keyboard,
+            )
+            delivered.append(recipient_id)
+        except Exception as exc:
+            # Keep the exact Telegram API reason in VPS logs for diagnosis.
+            print(
+                f"Join request notification failed: group_id={chat.id}, "
+                f"requester_id={user.id}, recipient_id={recipient_id}, "
+                f"error={type(exc).__name__}: {exc}"
+            )
+
+    if delivered:
         print(
-            "Join request notification failed for group",
-            chat.id,
-            "requester",
-            user.id,
+            f"Join request notification delivered: group_id={chat.id}, "
+            f"requester_id={user.id}, recipient_ids={delivered}"
         )
 
 
