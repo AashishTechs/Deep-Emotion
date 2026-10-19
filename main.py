@@ -404,69 +404,63 @@ async def main():
 
     await application.initialize()
 
-    # Register public commands so Telegram displays them in the chat Menu.
-    # Keep owner-only /broadcast out of the public command list.
-    await application.bot.set_my_commands(
-        [
-            BotCommand("start", "Start Deep Emotion"),
-            BotCommand("help", "Show available commands"),
-            BotCommand("ask", "Ask the AI a question"),
-            BotCommand("game", "Play a chat game"),
-            BotCommand("truth", "Get a truth question"),
-            BotCommand("dare", "Get a dare challenge"),
-            BotCommand("td", "Start Truth or Dare"),
-            BotCommand("memory", "View your saved memory"),
-            BotCommand("forget", "Forget a saved memory"),
-            BotCommand("forget_all", "Delete all your saved memories"),
-            BotCommand("clear", "Clear the current conversation"),
-            BotCommand("stats", "View bot statistics"),
-            BotCommand("privacy", "Learn about privacy and data"),
-        ]
-    )
+    # Register the public command list first. Per-chat command registration can
+    # fail if Telegram does not yet know a user's private chat; that must not
+    # prevent the bot itself from starting.
+    public_commands = [
+        BotCommand("start", "Start Deep Emotion"),
+        BotCommand("help", "Show available commands"),
+        BotCommand("ask", "Ask the AI a question"),
+        BotCommand("game", "Play a chat game"),
+        BotCommand("truth", "Get a truth question"),
+        BotCommand("dare", "Get a dare challenge"),
+        BotCommand("td", "Start Truth or Dare"),
+        BotCommand("memory", "View your saved memory"),
+        BotCommand("forget", "Forget a saved memory"),
+        BotCommand("forget_all", "Delete all your saved memories"),
+        BotCommand("clear", "Clear the current conversation"),
+        BotCommand("stats", "View bot statistics"),
+        BotCommand("privacy", "Learn about privacy and data"),
+    ]
 
-    # Show the private broadcast command only in the owner's bot chat.
+    try:
+        await application.bot.set_my_commands(public_commands)
+        logger.info("Public Telegram command menu registered.")
+    except Exception:
+        logger.exception("Could not register public Telegram commands.")
+
+    # Owner gets the private /broadcast and /groups commands.
     if OWNER_ID:
-        await application.bot.set_my_commands(
-            [
-            BotCommand("start", "Start Deep Emotion"),
-            BotCommand("help", "Show available commands"),
-            BotCommand("ask", "Ask the AI a question"),
-            BotCommand("game", "Play a chat game"),
-            BotCommand("truth", "Get a truth question"),
-            BotCommand("dare", "Get a dare challenge"),
-            BotCommand("td", "Start Truth or Dare"),
-            BotCommand("memory", "View your saved memory"),
-            BotCommand("forget", "Forget a saved memory"),
-            BotCommand("forget_all", "Delete all your saved memories"),
-            BotCommand("clear", "Clear the current conversation"),
-            BotCommand("stats", "View bot statistics"),
-            BotCommand("privacy", "Learn about privacy and data"),
-            BotCommand("broadcast", "Broadcast to registered groups"),
-            BotCommand("groups", "List registered groups"),
-        ],
-            scope=BotCommandScopeChat(chat_id=OWNER_ID),
-        )
+        try:
+            await application.bot.set_my_commands(
+                public_commands + [
+                    BotCommand("broadcast", "Broadcast to registered groups"),
+                    BotCommand("groups", "List registered groups"),
+                ],
+                scope=BotCommandScopeChat(chat_id=OWNER_ID),
+            )
+            logger.info("Owner command menu registered for OWNER_ID=%s.", OWNER_ID)
+        except Exception:
+            logger.exception(
+                "Could not register owner command menu for OWNER_ID=%s.", OWNER_ID
+            )
+    else:
+        logger.error("OWNER_ID is 0 or missing; owner-specific commands were not registered.")
 
-    # Show /groups only to the second authorized user as well.
-    await application.bot.set_my_commands(
-        [
-            BotCommand("start", "Start Deep Emotion"),
-            BotCommand("help", "Show available commands"),
-            BotCommand("ask", "Ask the AI a question"),
-            BotCommand("game", "Play a chat game"),
-            BotCommand("truth", "Get a truth question"),
-            BotCommand("dare", "Get a dare challenge"),
-            BotCommand("td", "Start Truth or Dare"),
-            BotCommand("memory", "View your saved memory"),
-            BotCommand("forget", "Forget a saved memory"),
-            BotCommand("forget_all", "Delete all your saved memories"),
-            BotCommand("clear", "Clear the current conversation"),
-            BotCommand("stats", "View bot statistics"),
-            BotCommand("privacy", "Learn about privacy and data"),
-            BotCommand("groups", "List registered groups"),
-        ],
-        scope=BotCommandScopeChat(chat_id=8877757796),
-    )
+    # The second authorized account gets /groups, but not /broadcast.
+    try:
+        await application.bot.set_my_commands(
+            public_commands + [
+                BotCommand("groups", "List registered groups"),
+            ],
+            scope=BotCommandScopeChat(chat_id=8877757796),
+        )
+        logger.info("Authorized /groups command menu registered for user ID 8877757796.")
+    except Exception:
+        logger.exception(
+            "Could not register the /groups command menu for user ID 8877757796. "
+            "That user may need to open the bot and press /start first."
+        )
 
     await application.start()
 
