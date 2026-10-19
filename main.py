@@ -10,6 +10,7 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     CallbackQueryHandler,
+    ChatMemberHandler,
     filters,
 )
 
@@ -42,6 +43,12 @@ from bot.truth_dare import (
     dare_command,
     truth_dare_command,
     truth_dare_callback,
+)
+
+from bot.broadcast import (
+    broadcast_command,
+    track_group_message,
+    track_bot_group_membership,
 )
 
 
@@ -156,6 +163,30 @@ async def main():
     # ======================================================
     # COMMAND HANDLERS
     # ======================================================
+
+    # Owner-only broadcast; the command itself enforces owner + private chat.
+    application.add_handler(
+        CommandHandler("broadcast", broadcast_command)
+    )
+
+    # Track groups as soon as the bot is added/removed. The low-priority
+    # message tracker also discovers existing groups when updates are visible.
+    application.add_handler(
+        ChatMemberHandler(
+            track_bot_group_membership,
+            ChatMemberHandler.MY_CHAT_MEMBER,
+        ),
+        group=-1,
+    )
+
+    application.add_handler(
+        MessageHandler(
+            filters.ChatType.GROUPS,
+            track_group_message,
+        ),
+        group=-1,
+    )
+
 
     application.add_handler(
         CommandHandler(
