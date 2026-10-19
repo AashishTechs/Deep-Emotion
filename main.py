@@ -10,6 +10,7 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     CallbackQueryHandler,
+    ChatJoinRequestHandler,
     ChatMemberHandler,
     filters,
 )
@@ -37,6 +38,8 @@ from bot.handlers import (
     button_handler,
     voice_message,
     privacy_command,
+    join_request_notification,
+    join_request_callback,
 )
 
 from bot.truth_dare import (
@@ -285,6 +288,21 @@ async def main():
         CommandHandler(
             "privacy",
             privacy_command,
+        )
+    )
+
+    # ======================================================
+    # GROUP JOIN REQUESTS
+    # ======================================================
+
+    application.add_handler(
+        ChatJoinRequestHandler(join_request_notification)
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            join_request_callback,
+            pattern=r"^joinreq:",
         )
     )
 
