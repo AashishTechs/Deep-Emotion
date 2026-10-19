@@ -1450,7 +1450,7 @@ async def welcome_new_member(
             f"🥹💗 Welcome {name}, 𝐓ᴜᴍ 𝐀ᴀ 𝐆ᴀʏᴇ! 🌸🧸"
         )
 
-        name_offset = len("👋 Welcome ".encode("utf-16-le")) // 2
+        name_offset = len("🥹💗 Welcome ".encode("utf-16-le")) // 2
         name_length = len(name.encode("utf-16-le")) // 2
 
         await update.message.reply_text(
@@ -1500,7 +1500,7 @@ async def goodbye_member(
         f"🥺💔 Goodbye {name}, 𝐓ᴜᴍ 𝐂ʜᴀʟᴇ 𝐆ᴀʏᴇ? 🌷🫶"
     )
 
-    name_offset = len("👋 ".encode("utf-16-le")) // 2
+    name_offset = len("🥺💔 Goodbye ".encode("utf-16-le")) // 2
     name_length = len(name.encode("utf-16-le")) // 2
 
     await update.message.reply_text(
