@@ -870,30 +870,53 @@ async def groups_command(
         )
         return
 
-    lines = [f"👥 <b>Deep Emotion — Registered Groups ({len(group_ids)})</b>", ""]
+    digit_map = str.maketrans("0123456789", "𝟎𝟏𝟐𝟑𝟒𝟓𝟔𝟕𝟖𝟗")
+    total = str(len(group_ids)).zfill(2).translate(digit_map)
+
+    header = (
+        "💗 <b>𝐃𝐄𝐄𝐏 𝐄𝐌𝐎𝐓𝐈𝐎𝐍</b>\n"
+        "╭━━━━━━━━━━━━━━━━━━╮\n"
+        "　🗂️ <b>𝐑𝐄𝐆𝐈𝐒𝐓𝐄𝐑𝐄𝐃 𝐆𝐑𝐎𝐔𝐏𝐒</b>\n"
+        "╰━━━━━━━━━━━━━━━━━━╯\n\n"
+        f"📊 Total Groups: {total}\n"
+    )
+    footer = "\n╰━━━━━━━━━━━━━━━━━━╯\n 🌸 <b>𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐃𝐞𝐞𝐩 𝐄𝐦𝐨𝐭𝐢𝐨𝐧</b>"
+
+    entries = []
     for index, group_id in enumerate(group_ids, start=1):
         try:
             group = await context.bot.get_chat(group_id)
-            title = group.title or "Unnamed group"
-            safe_title = html.escape(title)
-            lines.append(f"{index}. <b>{safe_title}</b>\n   ID: <code>{group_id}</code>")
+            title = html.escape(group.title or "Name Unavailable")
+            marker = "💞"
         except Exception as exc:
-            # Retain the registry entry; don't silently delete data from a read command.
-            lines.append(f"{index}. <b>Group name unavailable</b>\n   ID: <code>{group_id}</code>")
+            # Retain registry entries; this command must never delete group data.
+            title = "Name Unavailable"
+            marker = "🤍"
             print(f"Could not fetch group {group_id} for /groups: {exc}")
 
-    # Telegram limits a message to 4096 characters; send safe-sized chunks.
-    header = lines[:2]
-    chunk = "\n".join(header)
-    for line in lines[2:]:
-        candidate = f"{chunk}\n{line}" if chunk else line
-        if len(candidate) > 3500:
-            await message.reply_text(chunk, parse_mode="HTML")
-            chunk = line
-        else:
-            chunk = candidate
-    if chunk:
-        await message.reply_text(chunk, parse_mode="Markdown")
+        entries.append(
+            f"{marker} <b>GROUP {index:02d}</b>\n"
+            f" 🏷️ {title}\n"
+            f" 🆔 <code>{group_id}</code>"
+        )
+
+    # Send as one nicely formatted message when possible, splitting only if
+    # Telegram's message-size limit would otherwise be exceeded.
+    chunks = []
+    current = header
+    for entry in entries:
+        candidate = f"{current}\n\n{entry}"
+        if len(candidate) + len(footer) > 3900 and current != header:
+            chunks.append(current + footer)
+            current = header + "\n"
+            candidate = f"{current}{entry}"
+        current = candidate
+
+    if current:
+        chunks.append(current + footer)
+
+    for chunk in chunks:
+        await message.reply_text(chunk, parse_mode="HTML")
 
 
 # ==========================================================
