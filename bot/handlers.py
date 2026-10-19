@@ -1549,13 +1549,13 @@ async def join_request_notification(
     )
 
     notification = (
-        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\\n\\n"
-        "╭━━━「 📨 <b>𝐑ᴇǫᴜᴇsᴛ 𝐃ᴇᴛᴀɪʟs</b> 」━━━╮\\n\\n"
-        f"👤 <b>Name:</b> {safe_name}\\n"
-        f"🔗 <b>Mention:</b> {mention}\\n"
-        f"🆔 <b>User ID:</b> <code>{user.id}</code>\\n"
-        f"📛 <b>Username:</b> {username}\\n"
-        f"🛡️ <b>Scam Status:</b> {scam_status}\\n\\n"
+        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\n\n"
+        "╭━━━「 📨 <b>𝐑ᴇǫᴜᴇsᴛ 𝐃ᴇᴛᴀɪʟs</b> 」━━━╮\n\n"
+        f"👤 <b>Name:</b> {safe_name}\n"
+        f"🔗 <b>Mention:</b> {mention}\n"
+        f"🆔 <b>User ID:</b> <code>{user.id}</code>\n"
+        f"📛 <b>Username:</b> {username}\n"
+        f"🛡️ <b>Scam Status:</b> {scam_status}\n\n"
         "╰━━━━━━━━━━━━━━━━━━━━╯"
     )
     keyboard = InlineKeyboardMarkup([[
