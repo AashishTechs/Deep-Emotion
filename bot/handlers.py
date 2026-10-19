@@ -1523,6 +1523,126 @@ async def goodbye_member(
 
 
 # ==========================================================
+
+# ==========================================================
+# JOIN REQUEST NOTIFICATIONS
+# ==========================================================
+
+JOIN_REQUEST_AUTHORIZED_IDS = {OWNER_ID, 8877757796}
+
+
+async def join_request_notification(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """Notify the owner about a pending Telegram group join request."""
+    request = update.chat_join_request
+    if not request:
+        return
+
+    user = request.from_user
+    chat = request.chat
+    display_name = " ".join(
+        part for part in (user.first_name, user.last_name) if part
+    ) or user.username or "Friend"
+    safe_name = html.escape(display_name)
+    mention = f'<a href="tg://user?id={user.id}">{safe_name}</a>'
+    username = f"@{html.escape(user.username)}" if user.username else "Not set"
+    scam_status = (
+        "⚠️ Reported as Scam"
+        if getattr(user, "is_scam", False)
+        else "✅ Not Reported as Scam"
+    )
+
+    notification = (
+        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\n\n"
+        "╭━━━「 📨 <b>𝐑ᴇǫᴜᴇsᴛ 𝐃ᴇᴛᴀɪʟs</b> 」━━━╮\n\n"
+        f"👤 <b>Name:</b> {safe_name}\n"
+        f"🔗 <b>Mention:</b> {mention}\n"
+        f"🆔 <b>User ID:</b> <code>{user.id}</code>\n"
+        f"📛 <b>Username:</b> {username}\n"
+        f"🛡️ <b>Scam Status:</b> {scam_status}\n\n"
+        "╰━━━━━━━━━━━━━━━━━━━━╯"
+    )
+    keyboard = InlineKeyboardMarkup([[
+        InlineKeyboardButton(
+            "Accept",
+            callback_data=f"joinreq:approve:{chat.id}:{user.id}",
+        ),
+        InlineKeyboardButton(
+            "Decline",
+            callback_data=f"joinreq:decline:{chat.id}:{user.id}",
+        ),
+    ]])
+
+    try:
+        await context.bot.send_message(
+            chat_id=OWNER_ID,
+            text=notification,
+            parse_mode="HTML",
+            reply_markup=keyboard,
+        )
+    except Exception:
+        print(
+            "Join request notification failed for group",
+            chat.id,
+            "requester",
+            user.id,
+        )
+
+
+async def join_request_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """Approve or decline a pending request; callbacks are owner-only."""
+    query = update.callback_query
+    if not query or not query.data:
+        return
+
+    if query.from_user.id not in JOIN_REQUEST_AUTHORIZED_IDS:
+        await query.answer("You are not allowed to manage join requests.", show_alert=True)
+        return
+
+    try:
+        prefix, action, chat_id_text, user_id_text = query.data.split(":", 3)
+        if prefix != "joinreq" or action not in {"approve", "decline"}:
+            await query.answer("Invalid request action.", show_alert=True)
+            return
+        chat_id = int(chat_id_text)
+        user_id = int(user_id_text)
+    except (ValueError, TypeError):
+        await query.answer("Invalid request data.", show_alert=True)
+        return
+
+    try:
+        if action == "approve":
+            await context.bot.approve_chat_join_request(
+                chat_id=chat_id,
+                user_id=user_id,
+            )
+            result_text = "Request accepted."
+        else:
+            await context.bot.decline_chat_join_request(
+                chat_id=chat_id,
+                user_id=user_id,
+            )
+            result_text = "Request declined."
+
+        await query.answer(result_text)
+        # Keep the original notification intact; remove buttons once handled.
+        try:
+            await query.edit_message_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+    except Exception as exc:
+        print("Join request action failed:", repr(exc))
+        await query.answer(
+            "Could not process this request. It may already be handled or the bot may lack permissions.",
+            show_alert=True,
+        )
+
+
 # BUTTON HANDLER
 # ==========================================================
 
