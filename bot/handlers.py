@@ -1549,15 +1549,15 @@ async def join_request_notification(
     )
 
     notification = (
-        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\\n\\n"
-        f"👥 <b>Group:</b> {html.escape(chat.title or str(chat.id))}\\n\\n"
-        "╭━━━「 📨 <b>𝐑ᴇǫᴜᴇsᴛ 𝐃ᴇᴛᴀɪʟs</b> 」━━━╮\\n\\n"
-        f"👤 <b>Name:</b> {safe_name}\\n"
-        f"🔗 <b>Profile:</b> {mention}\\n"
-        f"🆔 <b>User ID:</b> <code>{user.id}</code>\\n"
-        f"📛 <b>Username:</b> {username}\\n"
-        f"🛡️ <b>Scam Status:</b> {scam_status}\\n\\n"
-        "╰━━━━━━━━━━━━━━━━━━━━╯\\n\\n"
+        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\n\n"
+        f"👥 <b>Group:</b> {html.escape(chat.title or str(chat.id))}\n\n"
+        "╭━━━「 📨 <b>𝐑ᴇǫᴜᴇsᴛ 𝐃ᴇᴛᴀɪʟs</b> 」━━━╮\n\n"
+        f"👤 <b>Name:</b> {safe_name}\n"
+        f"🔗 <b>Profile:</b> {mention}\n"
+        f"🆔 <b>User ID:</b> <code>{user.id}</code>\n"
+        f"📛 <b>Username:</b> {username}\n"
+        f"🛡️ <b>Scam Status:</b> {scam_status}\n\n"
+        "╰━━━━━━━━━━━━━━━━━━━━╯\n\n"
         "👇 <b>Group admin/owner, choose an action:</b>"
     )
     keyboard = InlineKeyboardMarkup([[
@@ -1656,7 +1656,7 @@ async def join_request_callback(
         try:
             original = message.text_html or message.text or "Join request processed."
             await query.edit_message_text(
-                text=f"{original}\\n\\n<b>{html.escape(result_text)}</b>",
+                text=f"{original}\n\n<b>{html.escape(result_text)}</b>",
                 parse_mode="HTML",
                 reply_markup=None,
             )
