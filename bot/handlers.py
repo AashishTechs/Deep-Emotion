@@ -1447,11 +1447,10 @@ async def welcome_new_member(
         )
 
         welcome_text = (
-            f"👋 Welcome {name}!\n\n"
-            f"💜 Welcome to {chat.title or 'our group'}!\n"
-            f"✨ Glad to have you here.\n\n"
-            f"💬 Feel free to chat with everyone "
-            f"and enjoy your time here! 🌸"
+            f"👋 Welcome {name}! 💗\n\n"
+            f"🌸 So happy to have you in {chat.title or 'our group'}!\n\n"
+            f"🫶 Make memories, share smiles, and feel at home.\n"
+            f"✨ The Deep Emotion family is happier with you here! 🌷"
         )
 
         name_offset = len("👋 Welcome ".encode("utf-16-le")) // 2
@@ -1501,9 +1500,10 @@ async def goodbye_member(
     )
 
     goodbye_text = (
-        f"👋 {name} has left the group.\n\n"
-        f"💔 We'll miss you!\n"
-        f"Take care and have a great day. 🌸"
+        f"👋 {name} has left the group... 💗\n\n"
+        f"🥺 You were a little part of our group's story.\n"
+        f"🌷 Wherever life takes you, stay happy and take care.\n\n"
+        f"✨ You'll always be welcome back! 🫶"
     )
 
     name_offset = len("👋 ".encode("utf-16-le")) // 2
