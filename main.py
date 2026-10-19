@@ -168,10 +168,6 @@ async def main():
     application.add_handler(
         CommandHandler("broadcast", broadcast_command)
     )
-    # Accept the common misspelling too, so /brodcast still reaches the same owner-only checks.
-    application.add_handler(
-        CommandHandler("brodcast", broadcast_command)
-    )
 
     # Track groups as soon as the bot is added/removed. The low-priority
     # message tracker also discovers existing groups when updates are visible.
