@@ -35,6 +35,7 @@ from bot.handlers import (
     welcome_new_member,
     welcome_chat_member_update,
     goodbye_member,
+    goodbye_chat_member_update,
     moderate_message,
     button_handler,
     voice_message,
@@ -357,6 +358,16 @@ async def main():
             filters.StatusUpdate.LEFT_CHAT_MEMBER,
             goodbye_member
         )
+    )
+
+    # Fallback for groups where Telegram doesn't send a LEFT_CHAT_MEMBER
+    # service message. Chat-member updates require the bot to be an admin.
+    application.add_handler(
+        ChatMemberHandler(
+            goodbye_chat_member_update,
+            ChatMemberHandler.CHAT_MEMBER,
+        ),
+        group=1,
     )
 
     # ======================================================
