@@ -9,6 +9,7 @@ from telegram.ext import (
     Application,
     CommandHandler,
     MessageHandler,
+    ChatMemberHandler,
     CallbackQueryHandler,
     filters,
 )
@@ -31,6 +32,7 @@ from bot.handlers import (
     forget_all,
     welcome_new_member,
     goodbye_member,
+    goodbye_chat_member_update,
     moderate_message,
     button_handler,
     voice_message,
@@ -289,6 +291,16 @@ async def main():
             filters.StatusUpdate.LEFT_CHAT_MEMBER,
             goodbye_member
         )
+    )
+
+    # Fallback for departures where Telegram omits the service message.
+    # The handler deduplicates this with LEFT_CHAT_MEMBER when both arrive.
+    application.add_handler(
+        ChatMemberHandler(
+            goodbye_chat_member_update,
+            ChatMemberHandler.CHAT_MEMBER,
+        ),
+        group=1,
     )
 
     # ======================================================
