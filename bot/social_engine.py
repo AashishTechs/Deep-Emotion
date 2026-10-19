@@ -54,18 +54,13 @@ def should_reply_group(
     other_user_mentioned=False,
 ):
     """
-    Reply to normal group messages, bot mentions, and replies to the bot.
+    In groups, reply only when directly addressed.
 
-    If a message explicitly mentions another user (but not the bot),
-    treat it as a direct conversation between users and stay silent.
+    The bot stays silent on ordinary group chat, including messages that
+    appear to be conversations between two users. This prevents the bot
+    from interrupting when someone forgets to tag a friend.
     """
-    if mentioned or replied_to_bot:
-        return True
-
-    if other_user_mentioned:
-        return False
-
-    return True
+    return bool(mentioned or replied_to_bot)
 
 
 def mark_group_reply(chat_id):
