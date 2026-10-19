@@ -4,7 +4,7 @@ import os
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from telegram import BotCommand, Update
+from telegram import BotCommand, BotCommandScopeChat, Update
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -167,6 +167,10 @@ async def main():
     # Owner-only broadcast; the command itself enforces owner + private chat.
     application.add_handler(
         CommandHandler("broadcast", broadcast_command)
+    )
+    # Accept the common misspelling too, so /brodcast still reaches the same owner-only checks.
+    application.add_handler(
+        CommandHandler("brodcast", broadcast_command)
     )
 
     # Track groups as soon as the bot is added/removed. The low-priority
@@ -414,6 +418,28 @@ async def main():
             BotCommand("privacy", "Learn about privacy and data"),
         ]
     )
+
+    # Show the private broadcast command only in the owner's bot chat.
+    if OWNER_ID:
+        await application.bot.set_my_commands(
+            [
+            BotCommand("start", "Start Deep Emotion"),
+            BotCommand("help", "Show available commands"),
+            BotCommand("ask", "Ask the AI a question"),
+            BotCommand("game", "Play a chat game"),
+            BotCommand("truth", "Get a truth question"),
+            BotCommand("dare", "Get a dare challenge"),
+            BotCommand("td", "Start Truth or Dare"),
+            BotCommand("memory", "View your saved memory"),
+            BotCommand("forget", "Forget a saved memory"),
+            BotCommand("forget_all", "Delete all your saved memories"),
+            BotCommand("clear", "Clear the current conversation"),
+            BotCommand("stats", "View bot statistics"),
+            BotCommand("privacy", "Learn about privacy and data"),
+            BotCommand("broadcast", "Broadcast to registered groups"),
+        ],
+            scope=BotCommandScopeChat(chat_id=OWNER_ID),
+        )
 
     await application.start()
 
