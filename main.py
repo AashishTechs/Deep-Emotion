@@ -33,6 +33,7 @@ from bot.handlers import (
     forget_memory,
     forget_all,
     welcome_new_member,
+    welcome_chat_member_update,
     goodbye_member,
     moderate_message,
     button_handler,
@@ -335,6 +336,15 @@ async def main():
         MessageHandler(
             filters.StatusUpdate.NEW_CHAT_MEMBERS,
             welcome_new_member
+        )
+    )
+
+    # Join-request approvals may arrive as chat-member status updates rather
+    # than NEW_CHAT_MEMBERS service messages. The handler deduplicates both.
+    application.add_handler(
+        ChatMemberHandler(
+            welcome_chat_member_update,
+            ChatMemberHandler.CHAT_MEMBER,
         )
     )
 
