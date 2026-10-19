@@ -4,7 +4,7 @@ import os
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from telegram import Update
+from telegram import BotCommand, Update
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -394,6 +394,26 @@ async def main():
     )
 
     await application.initialize()
+
+    # Register public commands so Telegram displays them in the chat Menu.
+    # Keep owner-only /broadcast out of the public command list.
+    await application.bot.set_my_commands(
+        [
+            BotCommand("start", "Start Deep Emotion"),
+            BotCommand("help", "Show available commands"),
+            BotCommand("ask", "Ask the AI a question"),
+            BotCommand("game", "Play a chat game"),
+            BotCommand("truth", "Get a truth question"),
+            BotCommand("dare", "Get a dare challenge"),
+            BotCommand("td", "Start Truth or Dare"),
+            BotCommand("memory", "View your saved memory"),
+            BotCommand("forget", "Forget a saved memory"),
+            BotCommand("forget_all", "Delete all your saved memories"),
+            BotCommand("clear", "Clear the current conversation"),
+            BotCommand("stats", "View bot statistics"),
+            BotCommand("privacy", "Learn about privacy and data"),
+        ]
+    )
 
     await application.start()
 
