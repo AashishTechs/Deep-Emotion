@@ -447,6 +447,27 @@ async def main():
             scope=BotCommandScopeChat(chat_id=OWNER_ID),
         )
 
+    # Show /groups only to the second authorized user as well.
+    await application.bot.set_my_commands(
+        [
+            BotCommand("start", "Start Deep Emotion"),
+            BotCommand("help", "Show available commands"),
+            BotCommand("ask", "Ask the AI a question"),
+            BotCommand("game", "Play a chat game"),
+            BotCommand("truth", "Get a truth question"),
+            BotCommand("dare", "Get a dare challenge"),
+            BotCommand("td", "Start Truth or Dare"),
+            BotCommand("memory", "View your saved memory"),
+            BotCommand("forget", "Forget a saved memory"),
+            BotCommand("forget_all", "Delete all your saved memories"),
+            BotCommand("clear", "Clear the current conversation"),
+            BotCommand("stats", "View bot statistics"),
+            BotCommand("privacy", "Learn about privacy and data"),
+            BotCommand("groups", "List registered groups"),
+        ],
+        scope=BotCommandScopeChat(chat_id=8877757796),
+    )
+
     await application.start()
 
     await application.updater.start_polling(
