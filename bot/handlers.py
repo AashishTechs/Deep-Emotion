@@ -39,7 +39,6 @@ from bot.ai import (
     transcribe_voice,
 )
 
-from bot.response_cache import get_cached_response
 
 from bot.database import (
     add_message,
@@ -1127,28 +1126,6 @@ async def process_ai(
             "supergroup",
         )
     )
-
-    # ------------------------------------------------------
-    # SAFE RESPONSE CACHE
-    # Generic greetings/acknowledgements can be answered without Gemini.
-    # Never cache personal, emotional, or context-dependent conversations.
-    # ------------------------------------------------------
-    cached_reply = get_cached_response(text)
-    if cached_reply:
-        await add_message(
-            chat_id,
-            user_id,
-            "user",
-            text,
-        )
-        await add_message(
-            chat_id,
-            user_id,
-            "model",
-            cached_reply,
-        )
-        await update.message.reply_text(cached_reply)
-        return
 
     # ------------------------------------------------------
     # History
