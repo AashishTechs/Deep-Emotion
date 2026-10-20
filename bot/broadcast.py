@@ -28,16 +28,7 @@ DB_PATH = Path("data/deep_emotions.db")
 async def init_broadcast_table():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            """
-            CREATE TABLE IF NOT EXISTS broadcast_users (
-                user_id INTEGER PRIMARY KEY,
-                added_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
-        await db.execute(
+    async with aiosqlite.connect(DB_PATH) as db:await db.execute(
             """
             CREATE TABLE IF NOT EXISTS broadcast_groups (
                 chat_id INTEGER PRIMARY KEY,
@@ -45,25 +36,6 @@ async def init_broadcast_table():
                 added_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
             """
-        )
-        await db.commit()
-
-
-async def track_private_user(update, context: ContextTypes.DEFAULT_TYPE):
-    """Remember private-chat users so future broadcasts can reach them."""
-    message = update.message
-    user = update.effective_user
-    chat = update.effective_chat
-
-    if not message or not user or not chat or chat.type != "private":
-        return
-
-    await init_broadcast_table()
-
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "INSERT OR IGNORE INTO broadcast_users(user_id) VALUES (?)",
-            (user.id,),
         )
         await db.commit()
 
@@ -222,7 +194,7 @@ DEFAULT_COMMANDS = [
 ]
 
 ADMIN_COMMANDS = DEFAULT_COMMANDS + [
-    BotCommand("broadcast", "Send a broadcast to users"),
+    BotCommand("broadcast", "Send a broadcast to groups"),
 ]
 
 
