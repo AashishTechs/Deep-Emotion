@@ -20,7 +20,6 @@ from bot.database import init_db, cleanup_old_data
 from bot.proactive import proactive_group_loop
 from bot.broadcast import (
     broadcast_command,
-    track_private_user,
     track_group_chat,
     configure_command_menu,
 )
@@ -265,14 +264,7 @@ async def main():
         )
     )
 
-    # Track private users and group chats before command handlers run.
-    application.add_handler(
-        MessageHandler(
-            filters.ChatType.PRIVATE,
-            track_private_user,
-        ),
-        group=-1,
-    )
+    # Track group chats only; private-user tracking is intentionally disabled.
     application.add_handler(
         MessageHandler(
             filters.ChatType.GROUPS,
