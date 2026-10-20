@@ -183,13 +183,24 @@ async def handle_join_request(update: Update, context: ContextTypes.DEFAULT_TYPE
         logger.info("Join request panel disabled for chat_id=%s; request from %s left pending", chat.id, user.id)
         return
 
-    # Post a minimal panel in the GC itself. Applicant identity/details are not
-    # exposed in the public message; only the callback payload contains the ID.
+    # Post the applicant details and real inline action buttons in the group.
+    # Escape user-controlled text before placing it in Telegram HTML.
+    full_name = html.escape(user.full_name)
+    username = f"@{html.escape(user.username)}" if user.username else "Not set"
+    mention = f'<a href="tg://user?id={user.id}">{full_name}</a>'
+    scam_status = (
+        "Reported as Scam" if getattr(user, "is_scam", False)
+        else "Not Reported as Scam"
+    )
     panel = (
-        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\\n\\n"
-        f"<b>GC:</b> {html.escape(chat.title or str(chat.id))}\\n"
-        "📨 A new member is waiting for approval.\\n"
-        "👑 Only this group's admins/owner can use the buttons below."
+        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\n\n"
+        "╭━━━「 📨 <b>𝐑ᴇǫᴜᴇsᴛ 𝐃ᴇᴛᴀɪʟs</b> 」━━━╮\n\n"
+        f"👤 <b>Name:</b> {full_name}\n"
+        f"🔗 <b>Mention:</b> {mention}\n"
+        f"🆔 <b>User ID:</b> <code>{user.id}</code>\n"
+        f"📛 <b>Username:</b> {username}\n"
+        f"🛡️ <b>Scam Status:</b> {scam_status}\n\n"
+        "╰━━━━━━━━━━━━━━━━━━━━╯"
     )
     keyboard = InlineKeyboardMarkup([[
         InlineKeyboardButton("✅ Accept", callback_data=f"joinreq:approve:{chat.id}:{user.id}"),
