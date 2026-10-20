@@ -38,6 +38,8 @@ GROUP_ADMIN_COMMANDS = [
     BotCommand("clear", "Clear chat history"),
     BotCommand("stats", "View your stats"),
     BotCommand("privacy", "Privacy information"),
+    BotCommand("joinpanel_on", "✨ 🟢 ʀᴇǫᴜᴇsᴛ ᴘᴀɴᴇʟ ᴏɴ"),
+    BotCommand("joinpanel_off", "✨ 🔴 ʀᴇǫᴜᴇsᴛ ᴘᴀɴᴇʟ ᴏғғ"),
     BotCommand("joinpanel", "Admin: turn join panel on/off"),
 ]
 
@@ -132,7 +134,11 @@ async def _send_private_status(bot, user_id: int, text: str):
         logger.info("Could not DM joinpanel status to user_id=%s; user may need to /start the bot", user_id)
 
 
-async def join_panel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def _handle_join_panel_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    forced_option: str | None = None,
+):
     message = update.effective_message
     chat = update.effective_chat
     user = update.effective_user
@@ -152,24 +158,43 @@ async def join_panel_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await _delete_command_message(message)
         return
 
-    option = (context.args[0].lower() if context.args else "").strip()
+    option = forced_option or (context.args[0].lower().strip() if context.args else "")
     await _delete_command_message(message)
 
     if option not in ("on", "off"):
-        await _send_private_status(
-            context.bot, user.id,
-            "💗 Join Request Panel\n\n"
-            "/joinpanel on — panel chalu karo\n"
-            "/joinpanel off — panel band karo\n\n"
-            "Settings ka result sirf aapko DM mein milega."
+        await context.bot.send_message(
+            chat_id=chat.id,
+            text=(
+                "💗 Join Request Panel commands:\\n"
+                "/joinpanel_on — panel ON karo\\n"
+                "/joinpanel_off — panel OFF karo"
+            ),
         )
         return
 
     enabled = option == "on"
     await _set_panel_enabled(chat.id, enabled)
-    status = "✅ Join request panel is now ON." if enabled else "🔕 Join request panel is now OFF."
-    await _send_private_status(context.bot, user.id, f"{status}\nGC: {html.escape(chat.title or str(chat.id))}")
+    status = (
+        "✅ Join Request Panel ON ho gaya hai."
+        if enabled
+        else "🔕 Join Request Panel OFF ho gaya hai."
+    )
+    await context.bot.send_message(chat_id=chat.id, text=status)
 
+
+async def join_panel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Backward-compatible /joinpanel on|off command."""
+    await _handle_join_panel_command(update, context)
+
+
+async def join_panel_on_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Enable the join-request panel and confirm in the group."""
+    await _handle_join_panel_command(update, context, forced_option="on")
+
+
+async def join_panel_off_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Disable the join-request panel and confirm in the group."""
+    await _handle_join_panel_command(update, context, forced_option="off")
 
 async def handle_join_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
     request = update.chat_join_request

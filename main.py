@@ -26,6 +26,8 @@ from bot.broadcast import (
 )
 from bot.join_requests import (
     join_panel_command,
+    join_panel_on_command,
+    join_panel_off_command,
     handle_join_request,
     join_request_callback,
     configure_join_panel_command_menus,
@@ -274,6 +276,12 @@ async def main():
     # Group join-request panel controls.
     application.add_handler(
         CommandHandler("joinpanel", join_panel_command)
+    )
+    application.add_handler(
+        CommandHandler("joinpanel_on", join_panel_on_command)
+    )
+    application.add_handler(
+        CommandHandler("joinpanel_off", join_panel_off_command)
     )
     application.add_handler(
         ChatJoinRequestHandler(handle_join_request)
