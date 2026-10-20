@@ -8,7 +8,13 @@ import logging
 from pathlib import Path
 
 import aiosqlite
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import (
+    BotCommand,
+    BotCommandScopeChatAdministrators,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Update,
+)
 from telegram.constants import ChatMemberStatus, ChatType
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes
@@ -17,6 +23,54 @@ from config import OWNER_ID
 
 logger = logging.getLogger(__name__)
 DB_PATH = Path("data/deep_emotions.db")
+
+GROUP_ADMIN_COMMANDS = [
+    BotCommand("start", "Welcome panel"),
+    BotCommand("help", "Help & Commands"),
+    BotCommand("ask", "Ask AI"),
+    BotCommand("game", "Play a game"),
+    BotCommand("truth", "Truth"),
+    BotCommand("dare", "Dare"),
+    BotCommand("td", "Truth or Dare"),
+    BotCommand("memory", "View saved memories"),
+    BotCommand("forget", "Delete one memory"),
+    BotCommand("forget_all", "Delete all memories"),
+    BotCommand("clear", "Clear chat history"),
+    BotCommand("stats", "View your stats"),
+    BotCommand("privacy", "Privacy information"),
+    BotCommand("joinpanel", "Admin: turn join panel on/off"),
+]
+
+
+async def _configure_group_admin_commands(bot, chat_id: int):
+    """Expose /joinpanel in this GC's command menu only to its admins."""
+    try:
+        await bot.set_my_commands(
+            GROUP_ADMIN_COMMANDS,
+            scope=BotCommandScopeChatAdministrators(chat_id=chat_id),
+        )
+    except TelegramError:
+        logger.exception("Could not configure admin command menu for chat_id=%s", chat_id)
+
+
+async def configure_join_panel_command_menus(bot):
+    """Apply admin-only /joinpanel menu scope to groups already tracked by the bot."""
+    if not DB_PATH.exists():
+        return
+    try:
+        async with aiosqlite.connect(DB_PATH) as db:
+            cursor = await db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='broadcast_groups'"
+            )
+            if not await cursor.fetchone():
+                return
+            cursor = await db.execute("SELECT chat_id FROM broadcast_groups")
+            rows = await cursor.fetchall()
+        for (chat_id,) in rows:
+            await _configure_group_admin_commands(bot, int(chat_id))
+    except aiosqlite.Error:
+        logger.exception("Could not load tracked groups for join-panel command menu")
+
 
 
 async def _ensure_settings_table():
@@ -90,6 +144,9 @@ async def join_panel_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await message.reply_text("Ye command apne GC mein admin ke roop mein use karo.")
         return
 
+    # Keep the command menu scoped to administrators for this group.
+    await _configure_group_admin_commands(context.bot, chat.id)
+
     # Silently remove non-admin attempts; don't reveal the command or reply to members.
     if not await _is_group_admin(context.bot, chat.id, user.id):
         await _delete_command_message(message)
@@ -121,6 +178,7 @@ async def handle_join_request(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     chat = request.chat
     user = request.from_user
+    await _configure_group_admin_commands(context.bot, chat.id)
     if not await _panel_enabled(chat.id):
         logger.info("Join request panel disabled for chat_id=%s; request from %s left pending", chat.id, user.id)
         return
