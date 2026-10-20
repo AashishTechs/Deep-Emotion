@@ -10,6 +10,7 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     ChatMemberHandler,
+    ChatJoinRequestHandler,
     CallbackQueryHandler,
     filters,
 )
@@ -22,6 +23,11 @@ from bot.broadcast import (
     broadcast_command,
     track_group_chat,
     configure_command_menu,
+)
+from bot.join_requests import (
+    join_panel_command,
+    handle_join_request,
+    join_request_callback,
 )
 
 from bot.handlers import (
