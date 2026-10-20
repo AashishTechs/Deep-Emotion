@@ -69,9 +69,8 @@ user_requests = defaultdict(deque)
 WINDOW_SECONDS = 20
 MAX_REQUESTS = 5
 
-# Reply to normal group messages without requiring a mention/reply.
-# Change to False for mention/reply-only group behavior.
-GROUP_REPLY_ALWAYS = True
+# Group AI replies are restricted to explicit @mentions of the bot.
+GROUP_REPLY_ALWAYS = False
 
 
 def allowed(user_id):
@@ -360,8 +359,7 @@ HELP_SECTION_TEXT = {
     "help_chat": (
         "💬 **Chat With Me**\n\n"
         "Private chat mein directly baat karo. 🌸\n\n"
-        "Group mein normal text par bhi AI reply karegi, "
-        "aur @mention/reply par bhi response degi."
+        "Group mein AI sirf tab reply karegi jab tum bot ko @mention karoge."
     ),
     "help_memory": (
         "🧠 **Memory**\n\n"
@@ -383,8 +381,7 @@ HELP_SECTION_TEXT = {
     ),
     "help_group": (
         "👥 **Group Chats**\n\n"
-        "Normal group text par AI reply karegi.\n"
-        "Reply/@mention bhi supported hai.\n\n"
+        "AI sirf bot ko @mention karne par reply karegi.\n\n"
         "Admins moderation aur group controls use kar sakte hain."
     ),
     "help_privacy": (
@@ -1944,7 +1941,7 @@ async def voice_message(
         return
 
     # ------------------------------------------------------
-    # GROUP BOT MENTION / REPLY CHECK
+    # GROUP BOT MENTION CHECK
     # ------------------------------------------------------
 
     if chat.type in (
@@ -1973,7 +1970,7 @@ async def voice_message(
             in caption_text.lower()
         )
 
-        if not is_reply_to_bot and not is_mentioned:
+        if not is_mentioned:
             return
 
     # ------------------------------------------------------
