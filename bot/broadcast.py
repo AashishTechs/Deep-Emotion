@@ -28,7 +28,8 @@ DB_PATH = Path("data/deep_emotions.db")
 async def init_broadcast_table():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    async with aiosqlite.connect(DB_PATH) as db:await db.execute(
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
             """
             CREATE TABLE IF NOT EXISTS broadcast_groups (
                 chat_id INTEGER PRIMARY KEY,
