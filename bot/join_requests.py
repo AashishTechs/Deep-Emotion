@@ -186,9 +186,9 @@ async def handle_join_request(update: Update, context: ContextTypes.DEFAULT_TYPE
     # Post a minimal panel in the GC itself. Applicant identity/details are not
     # exposed in the public message; only the callback payload contains the ID.
     panel = (
-        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\\n\\n"
-        f"<b>GC:</b> {html.escape(chat.title or str(chat.id))}\\n"
-        "📨 A new member is waiting for approval.\\n"
+        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\n\n"
+        f"<b>GC:</b> {html.escape(chat.title or str(chat.id))}\n"
+        "📨 A new member is waiting for approval.\n"
         "👑 Only this group's admins/owner can use the buttons below."
     )
     keyboard = InlineKeyboardMarkup([[
