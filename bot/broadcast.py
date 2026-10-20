@@ -98,10 +98,12 @@ async def broadcast_command(
 
     if not message_to_copy and not text:
         await update.message.reply_text(
-            "📢 Broadcast use:\n\n"
-            "`/broadcast Your message here`\n\n"
-            "Ya kisi message ko reply karke `/broadcast` bhejo."
-        , parse_mode="Markdown")
+            "📢 **𝗕ʀᴏᴀᴅᴄᴀsᴛ 𝗚ᴜɪᴅᴇ**\n\n"
+            "➤ `/broadcast Your message here`\n\n"
+            "➤ Kisi message ko reply karke `/broadcast` bhejo.\n\n"
+            "💗 **𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ**",
+            parse_mode="Markdown",
+        )
         return
 
     targets = await get_broadcast_targets()
