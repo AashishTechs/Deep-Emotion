@@ -8,7 +8,7 @@ from pathlib import Path
 
 import aiosqlite
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.constants import ChatMemberStatus, ChatType
+from telegram.constants import ChatType
 from telegram.ext import ContextTypes
 
 from config import OWNER_ID
@@ -61,7 +61,7 @@ async def _is_group_admin(bot, chat_id: int, user_id: int) -> bool:
         # The configured bot owner is trusted, but still must be an admin in this GC.
         try:
             member = await bot.get_chat_member(chat_id, user_id)
-            return member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER)
+            return member.status in ("administrator", "creator")
         except Exception:
             return False
     try:
