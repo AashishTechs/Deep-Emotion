@@ -28,6 +28,7 @@ from bot.join_requests import (
     join_panel_command,
     handle_join_request,
     join_request_callback,
+    configure_join_panel_command_menus,
 )
 
 from bot.handlers import (
@@ -423,6 +424,7 @@ async def main():
     # Set Telegram's command menu scopes after the bot is initialized.
     # /broadcast is visible only to the owner and user 8877757796.
     await configure_command_menu(application.bot)
+    await configure_join_panel_command_menus(application.bot)
 
     await application.start()
 
