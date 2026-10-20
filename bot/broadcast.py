@@ -38,6 +38,18 @@ async def init_broadcast_table():
             )
             """
         )
+
+        # Existing installations may have an older broadcast_groups table
+        # containing only chat_id/added_at. Migrate it in-place so existing
+        # registered groups are preserved instead of deleting the database.
+        cursor = await db.execute("PRAGMA table_info(broadcast_groups)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        if "title" not in columns:
+            await db.execute(
+                "ALTER TABLE broadcast_groups "
+                "ADD COLUMN title TEXT NOT NULL DEFAULT 'Unnamed group'"
+            )
+
         await db.commit()
 
 
