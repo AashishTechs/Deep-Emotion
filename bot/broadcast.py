@@ -82,6 +82,69 @@ async def get_broadcast_targets():
         return await cursor.fetchall()
 
 
+async def groups_command(
+    update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """Show registered groups to the owner and trusted admin in private chat."""
+    if not update.message or not update.effective_user or not update.effective_chat:
+        return
+
+    if update.effective_chat.type != "private":
+        await update.message.reply_text(
+            "🔒 Please use /groups in my private chat."
+        )
+        return
+
+    if update.effective_user.id not in BROADCAST_ADMIN_IDS:
+        await update.message.reply_text(
+            "⛔ You are not allowed to use this command."
+        )
+        return
+
+    targets = await get_broadcast_targets()
+    total = len(targets)
+
+    if not targets:
+        await update.message.reply_text(
+            "💗 **𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ**\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "👥 **𝗥ᴇɢɪsᴛᴇʀᴇᴅ 𝗚ʀᴏᴜᴘs**\n\n"
+            "📊 Total registered groups: **0**\n\n"
+            "No groups are registered yet. Add me to a group and let me receive a message there.",
+            parse_mode="Markdown",
+        )
+        return
+
+    header = (
+        "💗 **𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ**\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "👥 **𝗥ᴇɢɪsᴛᴇʀᴇᴅ 𝗚ʀᴏᴜᴘs**\n"
+        f"📊 **𝗧ᴏᴛᴀʟ 𝗚ʀᴏᴜᴘs:** {total}\n"
+        "━━━━━━━━━━━━━━━━━━\n\n"
+    )
+
+    # Keep each Telegram message comfortably below the 4096-character limit.
+    chunks = []
+    current = header
+    for index, (chat_id, title) in enumerate(targets, start=1):
+        entry = f"🔹 **{index}. {title}**\n🆔 `{chat_id}`\n\n"
+        if len(current) + len(entry) > 3500:
+            chunks.append(current)
+            current = "💗 **𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ — 𝗚ʀᴏᴜᴘs (continued)**\n━━━━━━━━━━━━━━━━━━\n\n"
+        current += entry
+
+    if current:
+        chunks.append(current)
+
+    for chunk in chunks:
+        await update.message.reply_text(
+            chunk,
+            parse_mode="Markdown",
+            disable_web_page_preview=True,
+        )
+
+
 async def broadcast_command(
     update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -210,6 +273,7 @@ DEFAULT_COMMANDS = [
 
 ADMIN_COMMANDS = DEFAULT_COMMANDS + [
     BotCommand("broadcast", "Send a broadcast to groups"),
+    BotCommand("groups", "List registered groups"),
 ]
 
 
