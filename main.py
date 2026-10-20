@@ -264,6 +264,20 @@ async def main():
         )
     )
 
+    # Group join-request panel controls.
+    application.add_handler(
+        CommandHandler("joinpanel", join_panel_command)
+    )
+    application.add_handler(
+        ChatJoinRequestHandler(handle_join_request)
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            join_request_callback,
+            pattern=r"^joinreq:",
+        )
+    )
+
     # Track group chats only; private-user tracking is intentionally disabled.
     application.add_handler(
         MessageHandler(
