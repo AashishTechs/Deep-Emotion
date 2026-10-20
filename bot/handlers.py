@@ -1304,7 +1304,7 @@ async def process_ai(
         bot_was_tagged = bool(
             bot_username
             and re.search(
-                rf"(?<![\\w@])@{re.escape(bot_username)}\\b",
+                rf"(?<![\w@])@{re.escape(bot_username)}\b",
                 original_text,
                 flags=re.IGNORECASE,
             )
