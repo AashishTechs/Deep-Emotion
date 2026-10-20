@@ -49,7 +49,7 @@ async def init_broadcast_table():
         await db.commit()
 
 
-async def track_private_user(update):
+async def track_private_user(update, context: ContextTypes.DEFAULT_TYPE):
     """Remember private-chat users so future broadcasts can reach them."""
     message = update.message
     user = update.effective_user
@@ -68,7 +68,7 @@ async def track_private_user(update):
         await db.commit()
 
 
-async def track_group_chat(update):
+async def track_group_chat(update, context: ContextTypes.DEFAULT_TYPE):
     """Remember group chats the bot has received an update from."""
     chat = update.effective_chat
     if not chat or chat.type not in ("group", "supergroup"):
