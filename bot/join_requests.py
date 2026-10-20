@@ -38,8 +38,8 @@ GROUP_ADMIN_COMMANDS = [
     BotCommand("clear", "Clear chat history"),
     BotCommand("stats", "View your stats"),
     BotCommand("privacy", "Privacy information"),
-    BotCommand("joinpanel_on", "Admin: turn join panel ON"),
-    BotCommand("joinpanel_off", "Admin: turn join panel OFF"),
+    BotCommand("joinpanel_on", "✨ 🟢 ʀᴇǫᴜᴇsᴛ ᴘᴀɴᴇʟ ᴏɴ"),
+    BotCommand("joinpanel_off", "✨ 🔴 ʀᴇǫᴜᴇsᴛ ᴘᴀɴᴇʟ ᴏғғ"),
     BotCommand("joinpanel", "Admin: turn join panel on/off"),
 ]
 
