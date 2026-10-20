@@ -275,7 +275,8 @@ async def main():
         CallbackQueryHandler(
             join_request_callback,
             pattern=r"^joinreq:",
-        )
+        ),
+        group=-1,
     )
 
     # Track group chats only; private-user tracking is intentionally disabled.
