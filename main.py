@@ -21,6 +21,7 @@ from bot.database import init_db, cleanup_old_data
 from bot.proactive import proactive_group_loop
 from bot.broadcast import (
     broadcast_command,
+    groups_command,
     track_group_chat,
     configure_command_menu,
 )
@@ -270,6 +271,14 @@ async def main():
         CommandHandler(
             "broadcast",
             broadcast_command,
+        )
+    )
+
+    # /groups is restricted to the owner and trusted user in private chat.
+    application.add_handler(
+        CommandHandler(
+            "groups",
+            groups_command,
         )
     )
 

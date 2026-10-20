@@ -3,6 +3,7 @@
 # ==========================================================
 
 import asyncio
+import html
 import logging
 from pathlib import Path
 
@@ -80,6 +81,70 @@ async def get_broadcast_targets():
             "SELECT chat_id, title FROM broadcast_groups ORDER BY title COLLATE NOCASE"
         )
         return await cursor.fetchall()
+
+
+async def groups_command(
+    update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """Show registered groups to the owner and trusted admin in private chat."""
+    if not update.message or not update.effective_user or not update.effective_chat:
+        return
+
+    if update.effective_chat.type != "private":
+        await update.message.reply_text(
+            "🔒 Please use /groups in my private chat."
+        )
+        return
+
+    if update.effective_user.id not in BROADCAST_ADMIN_IDS:
+        await update.message.reply_text(
+            "⛔ You are not allowed to use this command."
+        )
+        return
+
+    targets = await get_broadcast_targets()
+    total = len(targets)
+
+    if not targets:
+        await update.message.reply_text(
+            "💗 <b>𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ</b>\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "👥 <b>𝗥ᴇɢɪsᴛᴇʀᴇᴅ 𝗚ʀᴏᴜᴘs</b>\n\n"
+            "📊 Total registered groups: <b>0</b>\n\n"
+            "No groups are registered yet. Add me to a group and let me receive a message there.",
+            parse_mode="HTML",
+        )
+        return
+
+    header = (
+        "💗 <b>𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ</b>\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "👥 <b>𝗥ᴇɢɪsᴛᴇʀᴇᴅ 𝗚ʀᴏᴜᴘs</b>\n"
+        f"📊 <b>𝗧ᴏᴛᴀʟ 𝗚ʀᴏᴜᴘs:</b> {total}\n"
+        "━━━━━━━━━━━━━━━━━━\n\n"
+    )
+
+    # Keep each Telegram message comfortably below the 4096-character limit.
+    chunks = []
+    current = header
+    for index, (chat_id, title) in enumerate(targets, start=1):
+        safe_title = html.escape(title or "Unnamed group")
+        entry = f"🔹 <b>{index}. {safe_title}</b>\n🆔 <code>{chat_id}</code>\n\n"
+        if len(current) + len(entry) > 3500:
+            chunks.append(current)
+            current = "💗 <b>𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ — 𝗚ʀᴏᴜᴘs (continued)</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+        current += entry
+
+    if current:
+        chunks.append(current)
+
+    for chunk in chunks:
+        await update.message.reply_text(
+            chunk,
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+        )
 
 
 async def broadcast_command(
@@ -210,6 +275,7 @@ DEFAULT_COMMANDS = [
 
 ADMIN_COMMANDS = DEFAULT_COMMANDS + [
     BotCommand("broadcast", "Send a broadcast to groups"),
+    BotCommand("groups", "List registered groups"),
 ]
 
 
