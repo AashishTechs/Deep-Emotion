@@ -3,6 +3,7 @@
 # ==========================================================
 
 import asyncio
+import logging
 from pathlib import Path
 
 import aiosqlite
@@ -11,6 +12,8 @@ from telegram.error import RetryAfter
 from telegram.ext import ContextTypes
 
 from config import OWNER_ID
+
+logger = logging.getLogger(__name__)
 
 
 # The owner and this additional trusted Telegram user can use /broadcast.
@@ -119,6 +122,7 @@ async def broadcast_command(
 
     sent = 0
     failed = 0
+    failure_details = []
 
     for chat_id in targets:
         try:
@@ -151,25 +155,34 @@ async def broadcast_command(
                         text=text,
                     )
                 sent += 1
-            except Exception:
+            except Exception as retry_exc:
                 failed += 1
+                detail = f"{type(retry_exc).__name__}: {retry_exc}"
+                failure_details.append(detail)
+                logger.warning("Broadcast retry failed for chat_id=%s: %s", chat_id, detail)
 
         except Exception as exc:
             failed += 1
-            print(
-                f"Broadcast failed for user {chat_id}: {type(exc).__name__}: {exc}"
-            )
+            detail = f"{type(exc).__name__}: {exc}"
+            failure_details.append(detail)
+            logger.warning("Broadcast failed for chat_id=%s: %s", chat_id, detail)
 
         # Stay comfortably below Telegram's normal broadcast rate.
         await asyncio.sleep(0.05)
 
-    await status.edit_text(
+    summary = (
         "📢 **Broadcast completed**\n\n"
         f"✅ Sent: {sent}\n"
         f"❌ Failed: {failed}\n"
-        f"👥 Total: {len(targets)}",
-        parse_mode="Markdown",
+        f"👥 Total: {len(targets)}"
     )
+    if failure_details:
+        # Show a few distinct error messages so the owner can diagnose failures.
+        unique_details = list(dict.fromkeys(failure_details))[:3]
+        summary += "\n\n⚠️ **Failure reasons:**\n" + "\n".join(
+            f"• `{detail[:180]}`" for detail in unique_details
+        )
+    await status.edit_text(summary, parse_mode="Markdown")
 
 
 DEFAULT_COMMANDS = [
