@@ -7,8 +7,8 @@ import re
 import time
 
 
-# Group-level AI reply cooldown is disabled for normal messages.
-# Direct mentions/replies also always get a response.
+# Group chat AI only responds when the bot is explicitly mentioned.
+# Unprompted messages and replies without a bot mention are ignored.
 GROUP_AI_COOLDOWN = 0
 _last_group_reply = {}
 
@@ -54,18 +54,11 @@ def should_reply_group(
     other_user_mentioned=False,
 ):
     """
-    Reply to normal group messages, bot mentions, and replies to the bot.
-
-    If a message explicitly mentions another user (but not the bot),
-    treat it as a direct conversation between users and stay silent.
+    In group chats, respond only when the bot is explicitly @mentioned.
+    Replies to the bot without an @mention and ordinary group messages
+    must remain silent.
     """
-    if mentioned or replied_to_bot:
-        return True
-
-    if other_user_mentioned:
-        return False
-
-    return True
+    return bool(mentioned)
 
 
 def mark_group_reply(chat_id):
