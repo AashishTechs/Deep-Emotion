@@ -4,6 +4,7 @@
 # ==========================================================
 
 import html
+import logging
 import re
 import time
 from pathlib import Path
@@ -22,6 +23,8 @@ from telegram.constants import ChatAction
 from telegram.ext import ContextTypes, ApplicationHandlerStop
 
 from config import OWNER_ID
+
+logger = logging.getLogger(__name__)
 
 from bot.social_engine import (
     should_reply_group,
@@ -1365,47 +1368,62 @@ async def welcome_new_member(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-
-    if not update.message:
-        return
-
+    """Send a welcome message for each new human member in a group."""
+    message = update.effective_message
     chat = update.effective_chat
 
-    new_members = (
-        update.message.new_chat_members
-        or []
+    if message is None or chat is None:
+        logger.warning("Welcome handler received an update without message/chat.")
+        return
+
+    new_members = message.new_chat_members or []
+    if not new_members:
+        logger.info("Welcome handler ran but no new members were present.")
+        return
+
+    logger.info(
+        "Welcome event received: chat_id=%s, new_member_count=%s",
+        chat.id,
+        len(new_members),
     )
 
     for member in new_members:
-
         if member.id == context.bot.id:
+            logger.info("Skipping welcome for the bot itself in chat_id=%s", chat.id)
             continue
 
-        name = (
-            member.first_name
-            or member.username
-            or "Friend"
-        )
-
+        name = member.first_name or member.username or "Friend"
         welcome_text = f"🥹💗 Welcome {name}, 𝐓ᴜᴍ 𝐀ᴀ 𝐆ᴀʏᴇ! 🌸🧸"
-
         name_offset = len("🥹💗 Welcome ".encode("utf-16-le")) // 2
         name_length = len(name.encode("utf-16-le")) // 2
+        entities = [
+            MessageEntity(
+                type=MessageEntity.TEXT_MENTION,
+                offset=name_offset,
+                length=name_length,
+                user=member,
+            )
+        ]
 
-        await update.message.reply_text(
-            welcome_text,
-            entities=[
-                MessageEntity(
-                    type=MessageEntity.TEXT_MENTION,
-                    offset=name_offset,
-                    length=name_length,
-                    user=member,
-                )
-            ],
-        )
+        try:
+            await context.bot.send_message(
+                chat_id=chat.id,
+                text=welcome_text,
+                entities=entities,
+            )
+            logger.info(
+                "Welcome message sent: chat_id=%s, member_id=%s",
+                chat.id,
+                member.id,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to send welcome message: chat_id=%s, member_id=%s",
+                chat.id,
+                member.id,
+            )
 
 
-# ==========================================================
 # GOODBYE
 # ==========================================================
 
