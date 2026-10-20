@@ -37,6 +37,15 @@ async def init_broadcast_table():
             )
             """
         )
+        await db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS broadcast_groups (
+                chat_id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                added_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
         await db.commit()
 
 
@@ -59,31 +68,33 @@ async def track_private_user(update):
         await db.commit()
 
 
-async def get_broadcast_targets():
-    """Return known private Telegram user IDs, including legacy users."""
-    await init_broadcast_table()
+async def track_group_chat(update):
+    """Remember group chats the bot has received an update from."""
+    chat = update.effective_chat
+    if not chat or chat.type not in ("group", "supergroup"):
+        return
 
+    await init_broadcast_table()
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """
+            INSERT INTO broadcast_groups(chat_id, title)
+            VALUES (?, ?)
+            ON CONFLICT(chat_id) DO UPDATE SET title = excluded.title
+            """,
+            (chat.id, chat.title or "Unnamed group"),
+        )
+        await db.commit()
+
+
+async def get_broadcast_targets():
+    """Return known group chats for group-only broadcasts."""
+    await init_broadcast_table()
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
-            """
-            SELECT user_id
-            FROM broadcast_users
-            """
+            "SELECT chat_id, title FROM broadcast_groups ORDER BY title COLLATE NOCASE"
         )
-        rows = await cursor.fetchall()
-
-        # Before broadcast_users existed, private chats were already stored
-        # in messages with chat_id == user_id. Include those users too.
-        legacy_cursor = await db.execute(
-            """
-            SELECT DISTINCT chat_id
-            FROM messages
-            WHERE chat_id = user_id
-            """
-        )
-        legacy_rows = await legacy_cursor.fetchall()
-
-    return sorted({row[0] for row in rows} | {row[0] for row in legacy_rows})
+        return await cursor.fetchall()
 
 
 async def broadcast_command(
@@ -112,19 +123,20 @@ async def broadcast_command(
 
     if not targets:
         await update.message.reply_text(
-            "📢 Abhi broadcast ke liye koi private users registered nahi hain."
+            "📢 Abhi koi GC registered nahi hai. Bot ko GC mein add karke wahan koi message bhejo."
         )
         return
 
     status = await update.message.reply_text(
-        f"📢 Broadcast start...\n👥 Recipients: {len(targets)}"
+        f"📢 GC broadcast start...\n👥 Groups: {len(targets)}"
     )
 
     sent = 0
     failed = 0
+    sent_groups = []
     failure_details = []
 
-    for chat_id in targets:
+    for chat_id, group_title in targets:
         try:
             if message_to_copy:
                 await context.bot.copy_message(
@@ -139,6 +151,7 @@ async def broadcast_command(
                 )
 
             sent += 1
+            sent_groups.append(f"{group_title} (ID: {chat_id})")
 
         except RetryAfter as exc:
             await asyncio.sleep(exc.retry_after)
@@ -155,34 +168,41 @@ async def broadcast_command(
                         text=text,
                     )
                 sent += 1
+                sent_groups.append(f"{group_title} (ID: {chat_id})")
             except Exception as retry_exc:
                 failed += 1
                 detail = f"{type(retry_exc).__name__}: {retry_exc}"
-                failure_details.append(detail)
-                logger.warning("Broadcast retry failed for chat_id=%s: %s", chat_id, detail)
+                failure_details.append(f"{group_title} (ID: {chat_id}) — {detail}")
+                logger.warning("Broadcast retry failed for group=%s chat_id=%s: %s", group_title, chat_id, detail)
 
         except Exception as exc:
             failed += 1
             detail = f"{type(exc).__name__}: {exc}"
-            failure_details.append(detail)
-            logger.warning("Broadcast failed for chat_id=%s: %s", chat_id, detail)
+            failure_details.append(f"{group_title} (ID: {chat_id}) — {detail}")
+            logger.warning("Broadcast failed for group=%s chat_id=%s: %s", group_title, chat_id, detail)
 
         # Stay comfortably below Telegram's normal broadcast rate.
         await asyncio.sleep(0.05)
 
     summary = (
-        "📢 **Broadcast completed**\n\n"
+        "📢 GC Broadcast completed\n\n"
         f"✅ Sent: {sent}\n"
         f"❌ Failed: {failed}\n"
-        f"👥 Total: {len(targets)}"
+        f"👥 Total GCs: {len(targets)}"
     )
-    if failure_details:
-        # Show a few distinct error messages so the owner can diagnose failures.
-        unique_details = list(dict.fromkeys(failure_details))[:3]
-        summary += "\n\n⚠️ **Failure reasons:**\n" + "\n".join(
-            f"• `{detail[:180]}`" for detail in unique_details
+    if sent_groups:
+        summary += "\n\n✅ Sent to these GCs:\n" + "\n".join(
+            f"• {name[:100]}" for name in sent_groups[:20]
         )
-    await status.edit_text(summary, parse_mode="Markdown")
+        if len(sent_groups) > 20:
+            summary += f"\n• ...and {len(sent_groups) - 20} more"
+    if failure_details:
+        summary += "\n\n❌ Failed GCs (with reason):\n" + "\n".join(
+            f"• {detail[:220]}" for detail in failure_details[:10]
+        )
+        if len(failure_details) > 10:
+            summary += f"\n• ...and {len(failure_details) - 10} more"
+    await status.edit_text(summary)
 
 
 DEFAULT_COMMANDS = [
