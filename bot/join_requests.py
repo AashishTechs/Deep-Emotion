@@ -183,56 +183,30 @@ async def handle_join_request(update: Update, context: ContextTypes.DEFAULT_TYPE
         logger.info("Join request panel disabled for chat_id=%s; request from %s left pending", chat.id, user.id)
         return
 
-    name = html.escape(user.full_name or "Unknown")
-    username = f"@{html.escape(user.username)}" if user.username else "Not set"
-    mention = f'<a href="tg://user?id={user.id}">{name}</a>'
-    scam_status = "⚠️ Reported as Scam" if getattr(user, "is_scam", False) else "Not reported as scam"
+    # Post a minimal panel in the GC itself. Applicant identity/details are not
+    # exposed in the public message; only the callback payload contains the ID.
     panel = (
-        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\n\n"
-        f"<b>GC:</b> {html.escape(chat.title or str(chat.id))}\n"
-        "╭━━━「 📨 <b>𝐑ᴇǫᴜᴇsᴛ 𝐃ᴇᴛᴀɪʟs</b> 」━━━╮\n\n"
-        f"👤 <b>Name:</b> {name}\n"
-        f"🔗 <b>Mention:</b> {mention}\n"
-        f"🆔 <b>User ID:</b> <code>{user.id}</code>\n"
-        f"📛 <b>Username:</b> {username}\n"
-        f"🛡️ <b>Scam Status:</b> {scam_status}\n\n"
-        "╰━━━━━━━━━━━━━━━━━━━━╯"
+        "💗 <b>𝐃ᴇᴇᴘ 𝐄ᴍᴏᴛɪᴏɴ | 𝐍ᴇᴡ 𝐉ᴏɪɴ 𝐑ᴇǫᴜᴇsᴛ</b>\\n\\n"
+        f"<b>GC:</b> {html.escape(chat.title or str(chat.id))}\\n"
+        "📨 A new member is waiting for approval.\\n"
+        "👑 Only this group's admins/owner can use the buttons below."
     )
     keyboard = InlineKeyboardMarkup([[
         InlineKeyboardButton("✅ Accept", callback_data=f"joinreq:approve:{chat.id}:{user.id}"),
         InlineKeyboardButton("❌ Decline", callback_data=f"joinreq:decline:{chat.id}:{user.id}"),
     ]])
 
-    # Send private details to each human GC admin. Admins must have started the bot.
-    admins = await context.bot.get_chat_administrators(chat.id)
-    delivered = 0
-    for admin in admins:
-        if admin.user.is_bot:
-            continue
-        try:
-            await context.bot.send_message(
-                chat_id=admin.user.id,
-                text=panel,
-                parse_mode="HTML",
-                reply_markup=keyboard,
-                disable_web_page_preview=True,
-            )
-            delivered += 1
-        except TelegramError:
-            logger.info("Cannot DM join request to admin_id=%s in chat_id=%s", admin.user.id, chat.id)
+    try:
+        await context.bot.send_message(
+            chat_id=chat.id,
+            text=panel,
+            parse_mode="HTML",
+            reply_markup=keyboard,
+            disable_web_page_preview=True,
+        )
+    except TelegramError:
+        logger.exception("Could not post join request panel in chat_id=%s", chat.id)
 
-    if delivered == 0:
-        # Never leak applicant details to group members, even when DMs are unavailable.
-        try:
-            await context.bot.send_message(
-                chat_id=chat.id,
-                text=(
-                    "📨 Ek nayi join request pending hai. GC admins/owner, "
-                    "request panel privately paane ke liye bot ko DM mein /start karein."
-                ),
-            )
-        except TelegramError:
-            logger.exception("Could not notify admins about join request for chat_id=%s", chat.id)
 
 
 async def join_request_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
