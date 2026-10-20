@@ -72,6 +72,12 @@ MAX_REQUESTS = 5
 # Group AI replies are restricted to explicit @mentions of the bot.
 GROUP_REPLY_ALWAYS = False
 
+# When Gemini quota is exhausted, show the fallback at most once per chat
+# every 10 minutes instead of repeating it for every tagged message.
+QUOTA_FALLBACK_TEXT = "Babu, abhi thoda gussa hoon tumse 🥺❤️‍🩹 baad mein baat karti hoon. 🫶🏻"
+QUOTA_NOTICE_COOLDOWN_SECONDS = 600
+quota_notice_times = {}
+
 
 def allowed(user_id):
 
@@ -1275,10 +1281,53 @@ async def process_ai(
             repr(exc),
         )
 
-        await update.message.reply_text(
-            "Sorry 💗 abhi AI service se connection "
-            "nahi ho pa raha. Thodi der baad try karo."
+        error_text = str(exc).lower()
+        quota_exhausted = any(
+            marker in error_text
+            for marker in (
+                "resource_exhausted",
+                "quota",
+                "429",
+                "rate limit",
+                "too many requests",
+            )
         )
+
+        # Only use the cute fallback when the bot was explicitly tagged
+        # in a group/supergroup and Gemini reports a quota/rate-limit error.
+        original_text = update.message.text or ""
+        bot_username = (
+            getattr(context.bot, "username", None)
+            if context is not None
+            else None
+        )
+        bot_was_tagged = bool(
+            bot_username
+            and re.search(
+                rf"(?<![\\w@])@{re.escape(bot_username)}\\b",
+                original_text,
+                flags=re.IGNORECASE,
+            )
+        )
+
+        if (
+            quota_exhausted
+            and is_group
+            and bot_was_tagged
+        ):
+            now = time.monotonic()
+            last_notice = quota_notice_times.get(chat_id, 0)
+
+            if now - last_notice >= QUOTA_NOTICE_COOLDOWN_SECONDS:
+                quota_notice_times[chat_id] = now
+                await update.message.reply_text(
+                    QUOTA_FALLBACK_TEXT
+                )
+        else:
+            await update.message.reply_text(
+                "Sorry 💗 abhi AI service se connection "
+                "nahi ho pa raha. Thodi der baad try karo."
+            )
 
 
 # ==========================================================
