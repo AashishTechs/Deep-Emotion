@@ -87,57 +87,65 @@ async def groups_command(
     update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-    """Show registered groups to the owner and trusted admin in private chat."""
+    """Show the premium registered-groups panel only to approved users in private chat."""
     if not update.message or not update.effective_user or not update.effective_chat:
         return
 
+    # Only the owner and trusted Telegram ID may use this command, and only in DM.
     if update.effective_chat.type != "private":
-        await update.message.reply_text(
-            "🔒 Please use /groups in my private chat."
-        )
         return
 
     if update.effective_user.id not in BROADCAST_ADMIN_IDS:
-        await update.message.reply_text(
-            "⛔ You are not allowed to use this command."
-        )
+        # Do not reveal or promote this admin-only command to normal members.
         return
 
     targets = await get_broadcast_targets()
     total = len(targets)
 
+    header = (
+        "💗 <b>𝐃𝐄𝐄𝐏 𝐄𝐌𝐎𝐓𝐈𝐎𝐍</b>\n"
+        "╭━━━━━━━━━━━━━━━━━━╮\n"
+        "　🗂️ <b>𝐑𝐄𝐆𝐈𝐒𝐓𝐄𝐑𝐄𝐃 𝐆𝐑𝐎𝐔𝐏𝐒</b>\n"
+        "╰━━━━━━━━━━━━━━━━━━╯\n\n"
+        f"📊 Total Groups: <b>{total:02d}</b>\n\n"
+    )
+
     if not targets:
         await update.message.reply_text(
-            "💗 <b>𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ</b>\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-            "👥 <b>𝗥ᴇɢɪsᴛᴇʀᴇᴅ 𝗚ʀᴏᴜᴘs</b>\n\n"
-            "📊 Total registered groups: <b>0</b>\n\n"
-            "No groups are registered yet. Add me to a group and let me receive a message there.",
+            header + "No groups registered yet.\n╰━━━━━━━━━━━━━━━━━━╯\n"
+            "🌸 <b>𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐃𝐞𝐞𝐩 𝐄𝐦𝐨𝐭𝐢𝐨𝐧</b>",
             parse_mode="HTML",
+            disable_web_page_preview=True,
         )
         return
 
-    header = (
-        "💗 <b>𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ</b>\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "👥 <b>𝗥ᴇɢɪsᴛᴇʀᴇᴅ 𝗚ʀᴏᴜᴘs</b>\n"
-        f"📊 <b>𝗧ᴏᴛᴀʟ 𝗚ʀᴏᴜᴘs:</b> {total}\n"
-        "━━━━━━━━━━━━━━━━━━\n\n"
-    )
-
-    # Keep each Telegram message comfortably below the 4096-character limit.
+    # Match the user's sample: numbered sections, alternating heart accents,
+    # escaped group titles, IDs in monospace, and a branded footer.
     chunks = []
     current = header
     for index, (chat_id, title) in enumerate(targets, start=1):
-        safe_title = html.escape(title or "Unnamed group")
-        entry = f"🔹 <b>{index}. {safe_title}</b>\n🆔 <code>{chat_id}</code>\n\n"
-        if len(current) + len(entry) > 3500:
+        safe_title = html.escape(title or "Name Unavailable")
+        heart = "💞" if index == 1 or index % 2 == 1 else "🤍"
+        entry = (
+            f"{heart} <b>GROUP {index:02d}</b>\n"
+            f" 🏷️ {safe_title}\n"
+            f" 🆔 <code>{chat_id}</code>\n\n"
+        )
+        if len(current) + len(entry) + 180 > 3500:
             chunks.append(current)
-            current = "💗 <b>𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ — 𝗚ʀᴏᴜᴘs (continued)</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+            current = (
+                "💗 <b>𝐃𝐄𝐄𝐏 𝐄𝐌𝐎𝐓𝐈𝐎𝐍 — 𝐑𝐄𝐆𝐈𝐒𝐓𝐄𝐑𝐄𝐃 𝐆𝐑𝐎𝐔𝐏𝐒</b>\n"
+                "╭━━━━━━━━━━━━━━━━━━╮\n\n"
+            )
         current += entry
 
-    if current:
-        chunks.append(current)
+    footer = (
+        "╰━━━━━━━━━━━━━━━━━━╯\n"
+        " 🌸 <b>𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐃𝐞𝐞𝐩 𝐄𝐦𝐨𝐭𝐢𝐨𝐧</b>"
+    )
+    if len(current) + len(footer) <= 3900:
+        current += footer
+    chunks.append(current)
 
     for chunk in chunks:
         await update.message.reply_text(
