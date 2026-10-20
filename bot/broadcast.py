@@ -3,6 +3,7 @@
 # ==========================================================
 
 import asyncio
+import html
 import logging
 from pathlib import Path
 
@@ -107,20 +108,20 @@ async def groups_command(
 
     if not targets:
         await update.message.reply_text(
-            "💗 **𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ**\n"
+            "💗 <b>𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ</b>\n"
             "━━━━━━━━━━━━━━━━━━\n"
-            "👥 **𝗥ᴇɢɪsᴛᴇʀᴇᴅ 𝗚ʀᴏᴜᴘs**\n\n"
-            "📊 Total registered groups: **0**\n\n"
+            "👥 <b>𝗥ᴇɢɪsᴛᴇʀᴇᴅ 𝗚ʀᴏᴜᴘs</b>\n\n"
+            "📊 Total registered groups: <b>0</b>\n\n"
             "No groups are registered yet. Add me to a group and let me receive a message there.",
-            parse_mode="Markdown",
+            parse_mode="HTML",
         )
         return
 
     header = (
-        "💗 **𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ**\n"
+        "💗 <b>𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ</b>\n"
         "━━━━━━━━━━━━━━━━━━\n"
-        "👥 **𝗥ᴇɢɪsᴛᴇʀᴇᴅ 𝗚ʀᴏᴜᴘs**\n"
-        f"📊 **𝗧ᴏᴛᴀʟ 𝗚ʀᴏᴜᴘs:** {total}\n"
+        "👥 <b>𝗥ᴇɢɪsᴛᴇʀᴇᴅ 𝗚ʀᴏᴜᴘs</b>\n"
+        f"📊 <b>𝗧ᴏᴛᴀʟ 𝗚ʀᴏᴜᴘs:</b> {total}\n"
         "━━━━━━━━━━━━━━━━━━\n\n"
     )
 
@@ -128,10 +129,11 @@ async def groups_command(
     chunks = []
     current = header
     for index, (chat_id, title) in enumerate(targets, start=1):
-        entry = f"🔹 **{index}. {title}**\n🆔 `{chat_id}`\n\n"
+        safe_title = html.escape(title or "Unnamed group")
+        entry = f"🔹 <b>{index}. {safe_title}</b>\n🆔 <code>{chat_id}</code>\n\n"
         if len(current) + len(entry) > 3500:
             chunks.append(current)
-            current = "💗 **𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ — 𝗚ʀᴏᴜᴘs (continued)**\n━━━━━━━━━━━━━━━━━━\n\n"
+            current = "💗 <b>𝗗ᴇᴇᴘ 𝗘ᴍᴏᴛɪᴏɴ — 𝗚ʀᴏᴜᴘs (continued)</b>\n━━━━━━━━━━━━━━━━━━\n\n"
         current += entry
 
     if current:
@@ -140,7 +142,7 @@ async def groups_command(
     for chunk in chunks:
         await update.message.reply_text(
             chunk,
-            parse_mode="Markdown",
+            parse_mode="HTML",
             disable_web_page_preview=True,
         )
 
