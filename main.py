@@ -18,6 +18,11 @@ from config import BOT_TOKEN
 
 from bot.database import init_db, cleanup_old_data
 from bot.proactive import proactive_group_loop
+from bot.broadcast import (
+    broadcast_command,
+    track_private_user,
+    configure_command_menu,
+)
 
 from bot.handlers import (
     start,
@@ -250,6 +255,24 @@ async def main():
         )
     )
 
+    # /broadcast is registered as a real handler and is protected
+    # inside broadcast_command so only the owner + trusted user can use it.
+    application.add_handler(
+        CommandHandler(
+            "broadcast",
+            broadcast_command,
+        )
+    )
+
+    # Track private users before command handlers run, including /start.
+    application.add_handler(
+        MessageHandler(
+            filters.ChatType.PRIVATE,
+            track_private_user,
+        ),
+        group=-1,
+    )
+
     # ======================================================
     # TRUTH OR DARE BUTTONS
     # ======================================================
@@ -375,6 +398,10 @@ async def main():
     )
 
     await application.initialize()
+
+    # Set Telegram's command menu scopes after the bot is initialized.
+    # /broadcast is visible only to the owner and user 8877757796.
+    await configure_command_menu(application.bot)
 
     await application.start()
 
