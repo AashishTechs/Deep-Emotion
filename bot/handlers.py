@@ -463,32 +463,32 @@ HELP_SECTION_TEXT = {
         "/stats se saved messages, memories aur group context stats dekho."
     ),
     "help_commands": (
-        "📖 **All Bot Commands**\\n\\n"
-        "🌸 **Basic & AI**\\n"
-        "`/start` — Welcome panel\\n"
-        "`/help` — Help & Commands\\n"
-        "`/ask question` — AI se question poochho\\n"
-        "`/clear` — Chat history clear karo\\n\\n"
-        "🎮 **Games**\\n"
-        "`/game truth`, `/game dare`, `/game wyr`, `/game joke`\\n"
-        "`/truth` — Truth challenge\\n"
-        "`/dare` — Dare challenge\\n"
-        "`/td` — Truth or Dare buttons\\n\\n"
-        "🧠 **Memory & Account**\\n"
-        "`/memory` — Saved memories dekho\\n"
-        "`/forget ID` — Ek memory delete karo\\n"
-        "`/forget_all` — Saari memories delete karo\\n"
-        "`/stats` — Apne stats dekho\\n"
-        "`/privacy` — Privacy details\\n"
-        "`/id` — User/group IDs (groups only)\\n\\n"
-        "🛡️ **Group Admin Commands**\\n"
-        "`/joinpanel` — Join request panel help/status\\n"
-        "`/joinpanel_on` — Join panel ON karo\\n"
-        "`/joinpanel_off` — Join panel OFF karo\\n\\n"
-        "👑 **Owner / Trusted Admin Only**\\n"
-        "`/broadcast message` — Groups mein broadcast bhejo\\n"
-        "`/groups` — Registered groups ki list\\n\\n"
-        "💡 Example: `/ask Python kya hai?`"
+        "📖 ALL BOT COMMANDS\n\n"
+        "🌸 BASIC & AI\n"
+        "/start — Welcome panel\n"
+        "/help — Help & Commands\n"
+        "/ask question — AI se question poochho\n"
+        "/clear — Chat history clear karo\n\n"
+        "🎮 GAMES\n"
+        "/game truth | /game dare | /game wyr | /game joke\n"
+        "/truth — Truth challenge\n"
+        "/dare — Dare challenge\n"
+        "/td — Truth or Dare buttons\n\n"
+        "🧠 MEMORY & ACCOUNT\n"
+        "/memory — Saved memories dekho\n"
+        "/forget ID — Ek memory delete karo\n"
+        "/forget_all — Saari memories delete karo\n"
+        "/stats — Apne stats dekho\n"
+        "/privacy — Privacy details\n"
+        "/id — User/group IDs (groups only)\n\n"
+        "🛡️ GROUP ADMIN COMMANDS\n"
+        "/joinpanel — Join request panel help/status\n"
+        "/joinpanel_on — Join panel ON karo\n"
+        "/joinpanel_off — Join panel OFF karo\n\n"
+        "👑 OWNER / TRUSTED ADMIN ONLY\n"
+        "/broadcast message — Groups mein broadcast bhejo\n"
+        "/groups — Registered groups ki list\n\n"
+        "💡 Example: /ask Python kya hai?"
     ),
 }
 
@@ -1590,19 +1590,17 @@ async def button_handler(
     await query.answer()
     data = query.data
 
-    async def edit_panel(text, markup):
+    async def edit_panel(text, markup, parse_mode="Markdown"):
         if query.message.photo:
-            await query.edit_message_caption(
-                caption=text,
-                parse_mode="Markdown",
-                reply_markup=markup,
-            )
+            kwargs = {"caption": text, "reply_markup": markup}
+            if parse_mode:
+                kwargs["parse_mode"] = parse_mode
+            await query.edit_message_caption(**kwargs)
         else:
-            await query.edit_message_text(
-                text=text,
-                parse_mode="Markdown",
-                reply_markup=markup,
-            )
+            kwargs = {"text": text, "reply_markup": markup}
+            if parse_mode:
+                kwargs["parse_mode"] = parse_mode
+            await query.edit_message_text(**kwargs)
 
     async def show_home():
         pending_ai_tools.pop(
@@ -1661,6 +1659,7 @@ async def button_handler(
                     )
                 ]]
             ),
+            parse_mode=None,
         )
         return
 
