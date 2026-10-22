@@ -19,6 +19,12 @@ from bot.join_requests import DB_PATH, GROUP_ADMIN_COMMANDS
 
 logger = logging.getLogger(__name__)
 
+# Extend the shared admin-menu list so /joinpanel updates keep these commands too.
+GROUP_ADMIN_COMMANDS.extend([
+    BotCommand("ban", "Ban a member (reply or user ID)"),
+    BotCommand("unban", "Unban a member (reply or user ID)"),
+])
+
 
 def _is_group(chat) -> bool:
     return bool(chat and chat.type in (ChatType.GROUP, ChatType.SUPERGROUP))
@@ -169,10 +175,7 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def configure_moderation_command_menu(bot, chat_id: int):
     """Expose moderation commands to group admins only."""
-    commands = list(GROUP_ADMIN_COMMANDS) + [
-        BotCommand("ban", "Ban a member (reply or user ID)"),
-        BotCommand("unban", "Unban a member (reply or user ID)"),
-    ]
+    commands = list(GROUP_ADMIN_COMMANDS)
     try:
         await bot.set_my_commands(
             commands,
