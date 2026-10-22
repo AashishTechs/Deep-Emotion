@@ -52,6 +52,7 @@ from bot.handlers import (
     button_handler,
     voice_message,
     privacy_command,
+    id_command,
 )
 
 from bot.truth_dare import (
@@ -263,6 +264,11 @@ async def main():
             "privacy",
             privacy_command,
         )
+    )
+
+    # /id is available in groups only; private chats are handled silently.
+    application.add_handler(
+        CommandHandler("id", id_command)
     )
 
     # /broadcast is registered as a real handler and is protected
