@@ -163,7 +163,7 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        await context.bot.unban_chat_member(chat_id=chat.id, user_id=target.id)
+        await context.bot.unban_chat_member(chat_id=chat.id, user_id=target.id, only_if_banned=True)
         display_name = getattr(target, "full_name", None) or getattr(target, "first_name", None) or str(target.id)
         await message.reply_text(f"✅ {display_name} ko unban kar diya gaya.\n🆔 User ID: {target.id}")
     except TelegramError as exc:
