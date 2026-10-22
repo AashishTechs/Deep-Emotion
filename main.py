@@ -33,6 +33,12 @@ from bot.join_requests import (
     join_request_callback,
     configure_join_panel_command_menus,
 )
+from bot.moderation import (
+    ban_command,
+    unban_command,
+    moderation_commands_callback,
+    configure_moderation_command_menus,
+)
 
 from bot.handlers import (
     start,
@@ -271,6 +277,15 @@ async def main():
         CommandHandler("id", id_command)
     )
 
+    # Group moderation commands. Access and bot permissions are checked
+    # inside the handlers.
+    application.add_handler(
+        CommandHandler("ban", ban_command)
+    )
+    application.add_handler(
+        CommandHandler("unban", unban_command)
+    )
+
     # /broadcast is registered as a real handler and is protected
     # inside broadcast_command so only the owner + trusted user can use it.
     application.add_handler(
@@ -305,6 +320,15 @@ async def main():
         CallbackQueryHandler(
             join_request_callback,
             pattern=r"^joinreq:",
+        ),
+        group=-1,
+    )
+
+    # Override the Commands panel to include /ban and /unban.
+    application.add_handler(
+        CallbackQueryHandler(
+            moderation_commands_callback,
+            pattern=r"^help_commands$",
         ),
         group=-1,
     )
@@ -448,6 +472,7 @@ async def main():
     # /broadcast is visible only to the owner and user 8877757796.
     await configure_command_menu(application.bot)
     await configure_join_panel_command_menus(application.bot)
+    await configure_moderation_command_menus(application.bot)
 
     await application.start()
 
