@@ -129,7 +129,7 @@ async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await context.bot.ban_chat_member(chat_id=chat.id, user_id=target.id)
         display_name = getattr(target, "full_name", None) or getattr(target, "first_name", None) or str(target.id)
-        reply = f"🚫 {display_name} ko group se ban kar diya gaya.\n🆔 User ID: {target.id}"
+        reply = "𝐂𝐡𝐚𝐥 𝐍𝐢𝐤𝐚𝐥 𝐘𝐚𝐡𝐚 𝐒𝐞...! 😡 𝐁𝐀𝐍𝐍𝐄𝐃. — 𝐃 𝐄 𝐌 ◯ 𝇙 𝐈 𝐄 🌷"
         if reason:
             reply += f"\n📝 Reason: {reason[:500]}"
         await message.reply_text(reply)
@@ -165,7 +165,7 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await context.bot.unban_chat_member(chat_id=chat.id, user_id=target.id, only_if_banned=True)
         display_name = getattr(target, "full_name", None) or getattr(target, "first_name", None) or str(target.id)
-        await message.reply_text(f"✅ {display_name} ko unban kar diya gaya.\n🆔 User ID: {target.id}")
+        await message.reply_text("𝐂𝐡𝐚𝐥 𝐊𝐨𝐢 𝐍𝐚 𝐌𝐚𝐚𝐟 𝐊𝐢𝐲𝐚...! 😌 𝐔𝐍𝐁𝐀𝐍𝐍𝐄𝐃. — 𝐃 𝐄 𝐌 ◯ 𝇙 𝐈 𝐄 🌷")
     except TelegramError as exc:
         logger.warning("Unban failed in chat %s for user %s: %s", chat.id, target.id, exc)
         await message.reply_text(
