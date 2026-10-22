@@ -89,6 +89,42 @@ def allowed(user_id):
     return True
 
 
+async def id_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """Show IDs in group chats only, including the replied-to user's ID."""
+    message = update.effective_message
+    chat = update.effective_chat
+    user = update.effective_user
+
+    if not message or not chat or not user:
+        return
+
+    # This command is intentionally silent in private chats.
+    if chat.type not in ("group", "supergroup"):
+        return
+
+    lines = [
+        "🆔 <b>ID Information</b>",
+        "",
+        f"👤 Your ID: <code>{user.id}</code>",
+        f"💬 Group ID: <code>{chat.id}</code>",
+    ]
+
+    replied = message.reply_to_message
+    if replied:
+        target = replied.from_user
+        if target:
+            lines.append(f"🎯 Replied User ID: <code>{target.id}</code>")
+        elif replied.sender_chat:
+            lines.append(
+                f"🎯 Replied Sender Chat ID: <code>{replied.sender_chat.id}</code>"
+            )
+
+    await message.reply_text("\n".join(lines), parse_mode="HTML")
+
+
 # ==========================================================
 # STEP 4 — ANTI SPAM
 # ==========================================================
