@@ -8,7 +8,12 @@ import logging
 from pathlib import Path
 
 import aiosqlite
-from telegram import BotCommand, BotCommandScopeChat, BotCommandScopeDefault
+from telegram import (
+    BotCommand,
+    BotCommandScopeAllGroupChats,
+    BotCommandScopeChat,
+    BotCommandScopeDefault,
+)
 from telegram.error import RetryAfter
 from telegram.ext import ContextTypes
 
@@ -292,6 +297,12 @@ async def configure_command_menu(bot):
     await bot.set_my_commands(
         DEFAULT_COMMANDS,
         scope=BotCommandScopeDefault(),
+    )
+
+    # Show /id in group command menus only, not in private chats.
+    await bot.set_my_commands(
+        DEFAULT_COMMANDS + [BotCommand("id", "Show user and group IDs")],
+        scope=BotCommandScopeAllGroupChats(),
     )
 
     for user_id in BROADCAST_ADMIN_IDS:
