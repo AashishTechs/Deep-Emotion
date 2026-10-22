@@ -364,7 +364,7 @@ pending_ai_tools = {}
 
 WELCOME_IMAGE_URL = (
     "https://raw.githubusercontent.com/"
-    "AashishTechs/Deep-Emotion/main/Welcome.jpg?v=2"
+    "AashishTechs/Deep-Emotion/main/Welcome.jpg?v=3"
 )
 
 
