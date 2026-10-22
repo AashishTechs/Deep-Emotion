@@ -93,7 +93,7 @@ async def id_command(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-    """Show IDs in group chats only, including the replied-to user's ID."""
+    """Show a neatly formatted ID card in group chats only."""
     message = update.effective_message
     chat = update.effective_chat
     user = update.effective_user
@@ -101,26 +101,52 @@ async def id_command(
     if not message or not chat or not user:
         return
 
-    # This command is intentionally silent in private chats.
+    # Keep this command silent in private chats.
     if chat.type not in ("group", "supergroup"):
         return
 
+    user_name = html.escape(user.full_name or user.first_name or "Unknown")
+    username = f"@{html.escape(user.username)}" if user.username else "Not set"
+    group_name = html.escape(chat.title or "Group")
+    chat_type = "Supergroup" if chat.type == "supergroup" else "Group"
+
     lines = [
-        "🆔 <b>ID Information</b>",
+        "╭━━━「 🆔 <b>ID INFORMATION</b> 」━━━╮",
         "",
-        f"👤 Your ID: <code>{user.id}</code>",
-        f"💬 Group ID: <code>{chat.id}</code>",
+        "👤 <b>USER DETAILS</b>",
+        f"├ 🏷️ Name: {user_name}",
+        f"├ 🔗 Username: {username}",
+        f"└ 🆔 User ID: <code>{user.id}</code>",
+        "",
+        "💬 <b>CHAT DETAILS</b>",
+        f"├ 🏷️ Group: {group_name}",
+        f"├ 🆔 Chat ID: <code>{chat.id}</code>",
+        f"└ 📌 Type: {chat_type}",
     ]
 
     replied = message.reply_to_message
     if replied:
         target = replied.from_user
+        lines.extend(["", "🎯 <b>REPLIED MESSAGE</b>"])
         if target:
-            lines.append(f"🎯 Replied User ID: <code>{target.id}</code>")
-        elif replied.sender_chat:
-            lines.append(
-                f"🎯 Replied Sender Chat ID: <code>{replied.sender_chat.id}</code>"
+            target_name = html.escape(target.full_name or target.first_name or "Unknown")
+            target_username = (
+                f"@{html.escape(target.username)}" if target.username else "Not set"
             )
+            lines.extend([
+                f"├ 👤 Name: {target_name}",
+                f"├ 🔗 Username: {target_username}",
+                f"└ 🆔 User ID: <code>{target.id}</code>",
+            ])
+        elif replied.sender_chat:
+            sender_name = html.escape(replied.sender_chat.title or "Anonymous sender")
+            lines.extend([
+                f"├ 👤 Sender: {sender_name}",
+                f"└ 🆔 Sender Chat ID: <code>{replied.sender_chat.id}</code>",
+            ])
+
+    lines.append("")
+    lines.append("╰━━━━━━━━━━━━━━━━━━━━╯")
 
     await message.reply_text("\n".join(lines), parse_mode="HTML")
 
