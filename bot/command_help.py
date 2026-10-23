@@ -22,15 +22,13 @@ def _back_keyboard() -> InlineKeyboardMarkup:
 def _commands_text(*, show_owner: bool, show_group_admin: bool = False) -> str:
     """Build the complete command list as one HTML-formatted Telegram message."""
     text = (
-        "📖 <b>ᴅᴇᴇᴘ ᴇᴍᴏᴛɪᴏɴ — ᴀʟʟ ʙᴏᴛ ᴄᴏᴍᴍᴀɴᴅs</b>\n"
-        "\n"
+        "📖 <b>ᴅᴇᴇᴘ ᴇᴍᴏᴛɪᴏɴ — ᴀʟʟ ʙᴏᴛ ᴄᴏᴍᴍᴀɴᴅs</b>\n\n"
         "╭━━━ 🌸 <b>BASIC &amp; AI</b> ━━━╮\n"
         "│ <code>/start</code> — Welcome panel\n"
         "│ <code>/help</code> — Help &amp; Commands\n"
         "│ <code>/ask &lt;question&gt;</code> — AI se baat karo\n"
         "│ <code>/clear</code> — Chat history clear karo\n"
-        "╰━━━━━━━━━━━━━━━━━━╯\n"
-        "\n"
+        "╰━━━━━━━━━━━━━━━━━━╯\n\n"
         "╭━━━ 🎮 <b>GAMES &amp; FUN</b> ━━━╮\n"
         "│ <code>/game truth</code> — Truth challenge\n"
         "│ <code>/game dare</code> — Dare challenge\n"
@@ -39,8 +37,7 @@ def _commands_text(*, show_owner: bool, show_group_admin: bool = False) -> str:
         "│ <code>/truth</code> — Truth challenge\n"
         "│ <code>/dare</code> — Dare challenge\n"
         "│ <code>/td</code> — Truth or Dare buttons\n"
-        "╰━━━━━━━━━━━━━━━━━━╯\n"
-        "\n"
+        "╰━━━━━━━━━━━━━━━━━━╯\n\n"
         "╭━━━ 🧠 <b>MEMORY &amp; ACCOUNT</b> ━━━╮\n"
         "│ <code>/memory</code> — Saved memories dekho\n"
         "│ <code>/forget &lt;ID&gt;</code> — Ek memory delete karo\n"
@@ -48,19 +45,17 @@ def _commands_text(*, show_owner: bool, show_group_admin: bool = False) -> str:
         "│ <code>/stats</code> — Apne stats dekho\n"
         "│ <code>/privacy</code> — Privacy information\n"
         "│ <code>/id</code> — User/Group ID dekho (groups only)\n"
-        "╰━━━━━━━━━━━━━━━━━━━━╯\n"
-        "\n"
+        "╰━━━━━━━━━━━━━━━━━━━━╯\n\n"
         "╭━━━ 🛡️ <b>GROUP ADMIN</b> ━━━╮\n"
         "│ <code>/ban</code> — Reply karo ya <code>/ban USER_ID [reason]</code>\n"
         "│ <code>/unban</code> — Reply karo ya <code>/unban USER_ID</code>\n"
         "│ <code>/mute</code> — Mute a group member\n"
         "│ <code>/unmute</code> — Unmute a group member\n"
+        "│ <code>/filter &lt;target&gt;</code> — Sticker filter add karo\n"
+        "│ <code>/unfilter &lt;target&gt;</code> — Sticker filter remove karo\n"
         "│ <code>/joinpanel</code> — Join panel status/help\n"
         "│ <code>/joinpanel_on</code> — Join panel ON karo\n"
         "│ <code>/joinpanel_off</code> — Join panel OFF karo\n"
-        + ("│ <code>/filter &lt;target&gt;</code> — Sticker par reply; target: @username, USER_ID, ya display name\n"
-           "│ <code>/unfilter &lt;target&gt;</code> — Filter remove karo\n"
-           if show_group_admin else "")
         + "╰━━━━━━━━━━━━━━━━━━╯"
     )
 
@@ -77,8 +72,7 @@ def _commands_text(*, show_owner: bool, show_group_admin: bool = False) -> str:
         "\n\n"
         "💡 <b>EXAMPLE</b>\n"
         "<code>/ask Python kya hai?</code>\n\n"
-        "✨ Commands ko message box mein type karke send karo.\n"
-        "\n"
+        "✨ Commands ko message box mein type karke send karo.\n\n"
         "🖤 <b>Deep Emotion — Har baat, dil se.</b>"
     )
     return text
@@ -93,17 +87,19 @@ async def command_help_callback(
     if not query or not query.message:
         return
 
-    data = query.data or ""
-    if data != "help_commands":
+    if (query.data or "") != "help_commands":
         return
 
     await query.answer()
 
-    show_owner = (
-        _is_owner_or_trusted(query.from_user.id)
-        and query.message.chat.type == "private"
-    )
-    show_group_admin = False
+    is_private = query.message.chat.type == "private"
+    is_owner_or_trusted = _is_owner_or_trusted(query.from_user.id)
+
+    # In a private Commands view, only the owner/trusted admin gets the
+    # group-admin section. In a group, it is shown only to real group admins.
+    show_owner = is_owner_or_trusted and is_private
+    show_group_admin = is_owner_or_trusted and is_private
+
     if query.message.chat.type in ("group", "supergroup"):
         try:
             member = await context.bot.get_chat_member(
@@ -112,6 +108,7 @@ async def command_help_callback(
             show_group_admin = member.status in ("administrator", "creator")
         except TelegramError:
             show_group_admin = False
+
     text = _commands_text(
         show_owner=show_owner,
         show_group_admin=show_group_admin,
