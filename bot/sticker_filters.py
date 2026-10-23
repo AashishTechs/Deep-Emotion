@@ -1,14 +1,15 @@
-"""Group-admin sticker filters keyed by Telegram username.
+"""Group-admin sticker filters keyed by Telegram username or user ID.
 
-Admins can reply to a sticker with /filter @username. Whenever that username
-is mentioned in the same group, the bot sends the saved sticker.
+Admins can reply to a sticker with /filter @username or /filter USER_ID.
+The saved sticker is sent when that username is mentioned or that user is
+selected as a text mention in the same group.
 """
 import logging
 import re
 from html import escape
 
 import aiosqlite
-from telegram import Update
+from telegram import MessageEntity, Update
 from telegram.constants import ChatMemberStatus, ChatType
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes
@@ -18,6 +19,7 @@ from bot.join_requests import DB_PATH
 logger = logging.getLogger(__name__)
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{5,32}$")
+USER_ID_RE = re.compile(r"^[0-9]{5,20}$")
 MENTION_RE = re.compile(r"(?<![\w@])@([A-Za-z0-9_]{5,32})")
 
 
@@ -78,28 +80,37 @@ async def _admin_command_context(update: Update, context: ContextTypes.DEFAULT_T
     return message, chat
 
 
-def _normalize_username(value: str) -> str | None:
-    username = value.strip()
-    if username.startswith("@"):
-        username = username[1:]
-    if not USERNAME_RE.fullmatch(username):
-        return None
-    return username.casefold()
+def _normalize_target(value: str) -> str | None:
+    """Return a stable key for either a Telegram username or numeric user ID."""
+    target = value.strip()
+    if target.startswith("@"):
+        target = target[1:]
+    if USER_ID_RE.fullmatch(target):
+        return f"id:{target}"
+    if USERNAME_RE.fullmatch(target):
+        return target.casefold()
+    return None
+
+
+def _target_label(target_key: str) -> str:
+    if target_key.startswith("id:"):
+        return f"user ID {escape(target_key[3:])}"
+    return f"@{escape(target_key)}"
 
 
 async def filter_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Save the sticker being replied to for a username in this group."""
+    """Save the sticker being replied to for a username or numeric user ID."""
     resolved = await _admin_command_context(update, context)
     if not resolved:
         return
     message, chat = resolved
 
-    username_arg = (context.args or [None])[0]
-    username = _normalize_username(username_arg or "")
-    if not username:
+    target_arg = (context.args or [None])[0]
+    target_key = _normalize_target(target_arg or "")
+    if not target_key:
         await message.reply_text(
-            "Usage: kisi sticker par reply karke /filter @username bhejo.\n"
-            "Example: /filter @username"
+            "Usage: sticker par reply karke /filter @username ya /filter USER_ID bhejo.\n"
+            "Bina username wale member ke liye uska numeric User ID use karo."
         )
         return
 
@@ -107,7 +118,7 @@ async def filter_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sticker = getattr(replied, "sticker", None) if replied else None
     if not sticker:
         await message.reply_text(
-            "Pehle sticker wale message par reply karo, phir /filter @username bhejo."
+            "Pehle sticker wale message par reply karo, phir /filter @username ya /filter USER_ID bhejo."
         )
         return
 
@@ -122,51 +133,51 @@ async def filter_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 added_by = excluded.added_by,
                 created_at = CURRENT_TIMESTAMP
             """,
-            (chat.id, username, sticker.file_id, update.effective_user.id),
+            (chat.id, target_key, sticker.file_id, update.effective_user.id),
         )
         await db.commit()
 
     await message.reply_text(
-        f"✅ Sticker saved in <b>{escape(chat.title)}</b> for @{username}!",
+        f"✅ Sticker saved in <b>{escape(chat.title or 'this group')}</b> for {_target_label(target_key)}!",
         parse_mode="HTML",
     )
 
 
 async def unfilter_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Remove a username's saved sticker from this group."""
+    """Remove a username's or user ID's saved sticker from this group."""
     resolved = await _admin_command_context(update, context)
     if not resolved:
         return
     message, chat = resolved
 
-    username_arg = (context.args or [None])[0]
-    username = _normalize_username(username_arg or "")
-    if not username:
-        await message.reply_text("Usage: /unfilter @username")
+    target_arg = (context.args or [None])[0]
+    target_key = _normalize_target(target_arg or "")
+    if not target_key:
+        await message.reply_text("Usage: /unfilter @username ya /unfilter USER_ID")
         return
 
     await _ensure_filter_table()
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
             "DELETE FROM sticker_filters WHERE chat_id = ? AND username = ?",
-            (chat.id, username),
+            (chat.id, target_key),
         )
         await db.commit()
 
     if cursor.rowcount:
         await message.reply_text(
-            f"🗑️ Sticker removed in <b>{escape(chat.title)}</b> for @{username}!",
+            f"🗑️ Sticker removed in <b>{escape(chat.title or 'this group')}</b> for {_target_label(target_key)}!",
             parse_mode="HTML",
         )
     else:
         await message.reply_text(
-            f"ℹ️ No sticker filter in <b>{escape(chat.title)}</b> for @{username}!",
+            f"ℹ️ No sticker filter in <b>{escape(chat.title or 'this group')}</b> for {_target_label(target_key)}!",
             parse_mode="HTML",
         )
 
 
 async def handle_filtered_mentions(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Send the configured sticker when a group message mentions its username."""
+    """Send a configured sticker when a username or user-ID mention appears."""
     message = update.effective_message
     chat = update.effective_chat
     if not message or not chat or not _is_group(chat):
@@ -176,16 +187,19 @@ async def handle_filtered_mentions(update: Update, context: ContextTypes.DEFAULT
     if not text:
         return
 
-    usernames = list(dict.fromkeys(match.casefold() for match in MENTION_RE.findall(text)))
-    if not usernames:
+    target_keys = [f"id:{entity.user.id}" for entity in (message.entities or [])
+                   if entity.type == MessageEntity.TEXT_MENTION and entity.user]
+    target_keys.extend(match.casefold() for match in MENTION_RE.findall(text))
+    target_keys = list(dict.fromkeys(target_keys))
+    if not target_keys:
         return
 
     await _ensure_filter_table()
     async with aiosqlite.connect(DB_PATH) as db:
-        for username in usernames:
+        for target_key in target_keys:
             cursor = await db.execute(
                 "SELECT sticker_file_id FROM sticker_filters WHERE chat_id = ? AND username = ?",
-                (chat.id, username),
+                (chat.id, target_key),
             )
             row = await cursor.fetchone()
             if not row:
@@ -199,8 +213,8 @@ async def handle_filtered_mentions(update: Update, context: ContextTypes.DEFAULT
                 )
             except TelegramError:
                 logger.exception(
-                    "Could not send filtered sticker for @%s in chat %s",
-                    username,
+                    "Could not send filtered sticker for target %s in chat %s",
+                    target_key,
                     chat.id,
                 )
             # One sticker per message avoids excessive spam when several filtered
