@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 GROUP_ADMIN_COMMANDS.extend([
     BotCommand("ban", "Ban a member (reply or user ID)"),
     BotCommand("unban", "Unban a member (reply or user ID)"),
+    BotCommand("filter", "Save a sticker for a username"),
+    BotCommand("unfilter", "Remove a username sticker"),
 ])
 
 
