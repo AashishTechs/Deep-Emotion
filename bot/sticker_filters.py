@@ -125,10 +125,7 @@ async def filter_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await db.commit()
 
-    await message.reply_text(
-        f"✅ @{username} ke liye sticker filter save ho gaya.\n"
-        f"Ab is GC mein @{username} mention hone par sticker bheja jayega."
-    )
+    await message.reply_text(f"✅ Sticker saved in “{chat.title}” for @{username}!")
 
 
 async def unfilter_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -153,9 +150,13 @@ async def unfilter_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await db.commit()
 
     if cursor.rowcount:
-        await message.reply_text(f"🗑️ @{username} ka sticker filter hata diya.")
+        await message.reply_text(
+            f"🗑️ Sticker filter for @{username} removed from “{chat.title}”."
+        )
     else:
-        await message.reply_text(f"ℹ️ @{username} ke liye is GC mein koi filter saved nahi hai.")
+        await message.reply_text(
+            f"ℹ️ No sticker filter for @{username} in “{chat.title}”."
+        )
 
 
 async def handle_filtered_mentions(update: Update, context: ContextTypes.DEFAULT_TYPE):
