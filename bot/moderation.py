@@ -201,8 +201,8 @@ async def mute_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ),
         )
         await message.reply_text(
-            f"🔇 {getattr(target, 'full_name', None) or getattr(target, 'first_name', None) or target.id} "
-            "ko mute kar diya gaya. Ab ye GC mein messages nahi bhej sakta."
+            "🔇 User Muted Successfully!\n\n"
+            "This user can no longer send messages in this group."
         )
     except TelegramError as exc:
         logger.warning("Mute failed in chat %s for user %s: %s", chat.id, target.id, exc)
@@ -302,8 +302,8 @@ async def unmute_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             permissions=default_permissions,
         )
         await message.reply_text(
-            f"🔊 {getattr(target, 'full_name', None) or getattr(target, 'first_name', None) or target.id} "
-            "ab dobara GC mein messages bhej sakta hai."
+            "🔊 User Unmuted Successfully!\n\n"
+            "This user can now send messages in this group."
         )
     except TelegramError as exc:
         logger.warning("Unmute failed in chat %s for user %s: %s", chat.id, target.id, exc)
