@@ -244,6 +244,72 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+async def unmute_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Restore send permissions for a previously muted non-admin group member."""
+    message = update.effective_message
+    chat = update.effective_chat
+    if not message or not chat:
+        return
+    if not await _require_group_admin(update, context):
+        return
+
+    target, _ = await _resolve_target(update, context)
+    if not target:
+        await message.reply_text(
+            "Usage:\\n• Reply to a member's message: /unmute\\n"
+            "• Or use: /unmute USER_ID\\n\\n"
+            "Username se user resolve nahi hota; reply ya numeric Telegram ID use karo."
+        )
+        return
+
+    if target.id == context.bot.id or getattr(target, "is_bot", False):
+        await message.reply_text("ℹ️ Bot ko unmute karne ki zaroorat nahi hai.")
+        return
+
+    try:
+        target_member = await context.bot.get_chat_member(chat.id, target.id)
+        if target_member.status in (
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.OWNER,
+            "creator",
+        ):
+            await message.reply_text("ℹ️ Group admin/owner pe mute restriction nahi lagti.")
+            return
+        if target_member.status not in (ChatMemberStatus.MEMBER, ChatMemberStatus.RESTRICTED):
+            await message.reply_text("ℹ️ Ye user is GC ka active member nahi hai.")
+            return
+    except TelegramError:
+        await message.reply_text("❌ Member verify nahi ho paaya. Reply ya sahi USER_ID use karo.")
+        return
+
+    try:
+        await context.bot.restrict_chat_member(
+            chat_id=chat.id,
+            user_id=target.id,
+            permissions=ChatPermissions(
+                can_send_messages=True,
+                can_send_audios=True,
+                can_send_documents=True,
+                can_send_photos=True,
+                can_send_videos=True,
+                can_send_video_notes=True,
+                can_send_voice_notes=True,
+                can_send_polls=True,
+                can_send_other_messages=True,
+                can_add_web_page_previews=True,
+            ),
+        )
+        await message.reply_text(
+            f"🔊 {getattr(target, 'full_name', None) or getattr(target, 'first_name', None) or target.id} "
+            "ab dobara GC mein messages bhej sakta hai."
+        )
+    except TelegramError as exc:
+        logger.warning("Unmute failed in chat %s for user %s: %s", chat.id, target.id, exc)
+        await message.reply_text(
+            "❌ Unmute nahi ho paaya. Check karo bot admin hai aur uske paas Restrict members permission hai."
+        )
+
+
 async def configure_moderation_command_menu(bot, chat_id: int):
     """Expose moderation commands to group admins only."""
     commands = list(GROUP_ADMIN_COMMANDS)
