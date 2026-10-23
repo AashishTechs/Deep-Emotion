@@ -36,6 +36,8 @@ from bot.join_requests import (
 from bot.moderation import (
     ban_command,
     unban_command,
+    mute_command,
+    unmute_command,
     configure_moderation_command_menus,
 )
 
@@ -291,6 +293,12 @@ async def main():
     )
     application.add_handler(
         CommandHandler("unban", unban_command)
+    )
+    application.add_handler(
+        CommandHandler("mute", mute_command)
+    )
+    application.add_handler(
+        CommandHandler("unmute", unmute_command)
     )
 
     # Save/remove username sticker filters; handlers enforce group-admin access.
