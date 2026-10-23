@@ -1,4 +1,4 @@
-"""Interactive category-based Help & Commands menu for Deep Emotion."""
+"""Single-message command list for Deep Emotion's Help & Commands panel."""
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.error import TelegramError
@@ -9,151 +9,117 @@ from config import OWNER_ID
 TRUSTED_ADMIN_ID = 8877757796
 
 
-def _button(text: str, callback_data: str) -> InlineKeyboardButton:
-    return InlineKeyboardButton(text=text, callback_data=callback_data)
-
-
 def _is_owner_or_trusted(user_id: int) -> bool:
     return user_id in {OWNER_ID, TRUSTED_ADMIN_ID}
 
 
-def _categories_keyboard(*, show_owner: bool) -> InlineKeyboardMarkup:
-    rows = [
-        [
-            _button("🌸 Basic & AI", "help_cmd_basic"),
-            _button("🎮 Games", "help_cmd_games"),
-        ],
-        [
-            _button("🧠 Memory & Account", "help_cmd_memory"),
-            _button("🛡️ Group Admin", "help_cmd_group"),
-        ],
-    ]
+def _back_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main")]]
+    )
+
+
+def _commands_text(*, show_owner: bool) -> str:
+    """Build the complete command list as one HTML-formatted Telegram message."""
+    text = (
+        "📖 <b>ᴅᴇᴇᴘ ᴇᴍᴏᴛɪᴏɴ — ᴀʟʟ ʙᴏᴛ ᴄᴏᴍᴍᴀɴᴅs</b>\n"
+        "\n"
+        "╭━━━ 🌸 <b>BASIC &amp; AI</b> ━━━╮\n"
+        "│ <code>/start</code> — Welcome panel\n"
+        "│ <code>/help</code> — Help &amp; Commands\n"
+        "│ <code>/ask &lt;question&gt;</code> — AI se baat karo\n"
+        "│ <code>/clear</code> — Chat history clear karo\n"
+        "╰━━━━━━━━━━━━━━━━━━╯\n"
+        "\n"
+        "╭━━━ 🎮 <b>GAMES &amp; FUN</b> ━━━╮\n"
+        "│ <code>/game truth</code> — Truth challenge\n"
+        "│ <code>/game dare</code> — Dare challenge\n"
+        "│ <code>/game wyr</code> — Would You Rather\n"
+        "│ <code>/game joke</code> — Joke suno\n"
+        "│ <code>/truth</code> — Truth challenge\n"
+        "│ <code>/dare</code> — Dare challenge\n"
+        "│ <code>/td</code> — Truth or Dare buttons\n"
+        "╰━━━━━━━━━━━━━━━━━━╯\n"
+        "\n"
+        "╭━━━ 🧠 <b>MEMORY &amp; ACCOUNT</b> ━━━╮\n"
+        "│ <code>/memory</code> — Saved memories dekho\n"
+        "│ <code>/forget &lt;ID&gt;</code> — Ek memory delete karo\n"
+        "│ <code>/forget_all</code> — Saari memories delete karo\n"
+        "│ <code>/stats</code> — Apne stats dekho\n"
+        "│ <code>/privacy</code> — Privacy information\n"
+        "│ <code>/id</code> — User/Group ID dekho (groups only)\n"
+        "╰━━━━━━━━━━━━━━━━━━━━╯\n"
+        "\n"
+        "╭━━━ 🛡️ <b>GROUP ADMIN</b> ━━━╮\n"
+        "│ <code>/ban</code> — Reply karo ya <code>/ban USER_ID [reason]</code>\n"
+        "│ <code>/unban</code> — Reply karo ya <code>/unban USER_ID</code>\n"
+        "│ <code>/joinpanel</code> — Join panel status/help\n"
+        "│ <code>/joinpanel_on</code> — Join panel ON karo\n"
+        "│ <code>/joinpanel_off</code> — Join panel OFF karo\n"
+        "╰━━━━━━━━━━━━━━━━━━╯"
+    )
+
     if show_owner:
-        rows.append([_button("👑 Owner & Trusted", "help_cmd_owner")])
-    rows.append([_button("🔙 Back to Help", "help_main")])
-    return InlineKeyboardMarkup(rows)
+        text += (
+            "\n\n"
+            "╭━━━ 👑 <b>OWNER &amp; TRUSTED</b> ━━━╮\n"
+            "│ <code>/broadcast &lt;message&gt;</code> — Groups mein broadcast\n"
+            "│ <code>/groups</code> — Registered groups ki list\n"
+            "╰━━━━━━━━━━━━━━━━━━━━╯"
+        )
 
-
-def _category_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
-        [_button("📚 All Categories", "help_commands")],
-        [_button("🔙 Back to Help", "help_main")],
-    ])
-
-
-def _owner_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
-        [_button("📚 All Categories", "help_commands")],
-        [_button("🔙 Back to Help", "help_main")],
-    ])
-
-
-CATEGORY_TEXT = {
-    "help_cmd_basic": (
-        "🌸 BASIC & AI\n\n"
-        "/start — Welcome panel\n"
-        "/help — Open Help & Commands\n"
-        "/ask question — Ask AI a question\n"
-        "/clear — Clear conversation history\n\n"
-        "💡 Example: /ask Python kya hai?"
-    ),
-    "help_cmd_games": (
-        "🎮 FUN & GAMES\n\n"
-        "/game truth — Start a truth challenge\n"
-        "/game dare — Start a dare challenge\n"
-        "/game wyr — Would You Rather\n"
-        "/game joke — Get a joke\n"
-        "/truth — Get a truth question\n"
-        "/dare — Get a dare challenge\n"
-        "/td — Open Truth or Dare buttons"
-    ),
-    "help_cmd_memory": (
-        "🧠 MEMORY & ACCOUNT\n\n"
-        "/memory — View saved memories\n"
-        "/forget ID — Delete one saved memory\n"
-        "/forget_all — Delete all saved memories\n"
-        "/stats — View your activity and data stats\n"
-        "/privacy — Read the privacy information\n\n"
-        "🔐 Personal memories are not automatically shared with group AI context."
-    ),
-    "help_cmd_group": (
-        "🛡️ GROUP & ADMIN COMMANDS\n\n"
-        "/id — Show user/group IDs (groups only)\n"
-        "/ban — Reply to a member, or /ban USER_ID [reason]\n"
-        "/unban — Reply to a member, or /unban USER_ID\n"
-        "/joinpanel — Join-request panel help/status\n"
-        "/joinpanel_on — Enable the join panel\n"
-        "/joinpanel_off — Disable the join panel\n\n"
-        "⚠️ /ban and /unban require group-admin permissions. Join-panel controls are permission-checked too."
-    ),
-    "help_cmd_owner": (
-        "👑 OWNER & TRUSTED COMMANDS\n\n"
-        "/broadcast message — Send a broadcast to registered groups\n"
-        "/groups — View registered groups\n\n"
-        "🔒 These commands are restricted by the bot's existing access checks."
-    ),
-}
+    text += (
+        "\n\n"
+        "💡 <b>EXAMPLE</b>\n"
+        "<code>/ask Python kya hai?</code>\n\n"
+        "✨ Commands ko message box mein type karke send karo.\n"
+        "\n"
+        "🖤 <b>Deep Emotion — Har baat, dil se.</b>"
+    )
+    return text
 
 
 async def command_help_callback(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-    """Render the category menu and the selected command-help page."""
+    """Show every command in one message when the Commands button is tapped."""
     query = update.callback_query
     if not query or not query.message:
         return
 
     data = query.data or ""
-    user_id = query.from_user.id
-    chat = query.message.chat
-
-    if data == "help_cmd_owner" and (
-        not _is_owner_or_trusted(user_id) or chat.type != "private"
-    ):
-        await query.answer(
-            "🔒 Owner commands are only available to the owner/trusted user in private chat.",
-            show_alert=True,
-        )
-        raise ApplicationHandlerStop
+    if data != "help_commands":
+        return
 
     await query.answer()
 
-    if data == "help_commands":
-        text = (
-            "📖 DEEP EMOTION — COMMANDS\n\n"
-            "Choose a category to see its commands and descriptions. 👇\n\n"
-            "🌸 Basic & AI  ·  🎮 Games\n"
-            "🧠 Memory & Account  ·  🛡️ Group Admin\n"
-        )
-        show_owner = _is_owner_or_trusted(user_id) and chat.type == "private"
-        markup = _categories_keyboard(show_owner=show_owner)
-
-    elif data in CATEGORY_TEXT:
-        text = CATEGORY_TEXT[data]
-        markup = _owner_keyboard() if data == "help_cmd_owner" else _category_keyboard()
-
-    else:
-        return
+    show_owner = (
+        _is_owner_or_trusted(query.from_user.id)
+        and query.message.chat.type == "private"
+    )
+    text = _commands_text(show_owner=show_owner)
+    markup = _back_keyboard()
 
     try:
-        if chat.type == "private" and query.message.photo:
-            await query.edit_message_caption(
-                caption=text,
-                reply_markup=markup,
-            )
-        elif query.message.photo:
-            await query.edit_message_caption(
-                caption=text,
+        if query.message.photo:
+            # The complete list is longer than Telegram's photo-caption limit.
+            # Replace the photo panel with one regular text message instead.
+            await query.message.delete()
+            await context.bot.send_message(
+                chat_id=query.message.chat.id,
+                text=text,
+                parse_mode="HTML",
                 reply_markup=markup,
             )
         else:
             await query.edit_message_text(
                 text=text,
+                parse_mode="HTML",
                 reply_markup=markup,
             )
     except TelegramError:
-        # Telegram may report "message is not modified" after a repeated tap.
+        # Ignore repeated taps or messages that can no longer be edited.
         pass
 
     raise ApplicationHandlerStop
