@@ -58,8 +58,8 @@ def _commands_text(*, show_owner: bool, show_group_admin: bool = False) -> str:
         "│ <code>/joinpanel</code> — Join panel status/help\n"
         "│ <code>/joinpanel_on</code> — Join panel ON karo\n"
         "│ <code>/joinpanel_off</code> — Join panel OFF karo\n"
-        + ("│ <code>/filter @username/USER_ID</code> — Save a filter\n"
-           "│ <code>/unfilter @username/USER_ID</code> — Remove a filter\n"
+        + ("│ <code>/filter &lt;target&gt;</code> — Sticker par reply; target: @username, USER_ID, ya display name\n"
+           "│ <code>/unfilter &lt;target&gt;</code> — Filter remove karo\n"
            if show_group_admin else "")
         + "╰━━━━━━━━━━━━━━━━━━╯"
     )
@@ -120,8 +120,6 @@ async def command_help_callback(
 
     try:
         if query.message.photo:
-            # The complete list is longer than Telegram's photo-caption limit.
-            # Replace the photo panel with one regular text message instead.
             await query.message.delete()
             await context.bot.send_message(
                 chat_id=query.message.chat.id,
@@ -136,7 +134,6 @@ async def command_help_callback(
                 reply_markup=markup,
             )
     except TelegramError:
-        # Ignore repeated taps or messages that can no longer be edited.
         pass
 
     raise ApplicationHandlerStop
