@@ -58,8 +58,8 @@ def _commands_text(*, show_owner: bool, show_group_admin: bool = False) -> str:
         "│ <code>/joinpanel</code> — Join panel status/help\n"
         "│ <code>/joinpanel_on</code> — Join panel ON karo\n"
         "│ <code>/joinpanel_off</code> — Join panel OFF karo\n"
-        + ("│ <code>/filter @username</code> — Reply sticker ko username se save karo\n"
-           "│ <code>/unfilter @username</code> — Saved sticker filter hatao\n"
+        + ("│ <code>/filter @username</code> — Save a filter\n"
+           "│ <code>/unfilter @username</code> — Remove a filter\n"
            if show_group_admin else "")
         + "╰━━━━━━━━━━━━━━━━━━╯"
     )
