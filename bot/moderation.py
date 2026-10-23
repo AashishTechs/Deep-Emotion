@@ -6,6 +6,7 @@ import aiosqlite
 from telegram import (
     BotCommand,
     BotCommandScopeChatAdministrators,
+    ChatPermissions,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Update,
@@ -25,6 +26,8 @@ GROUP_ADMIN_COMMANDS.extend([
     BotCommand("unban", "Unban a member (reply or user ID)"),
     BotCommand("filter", "Save a sticker for a username"),
     BotCommand("unfilter", "Remove a username sticker"),
+    BotCommand("mute", "Mute a member (reply or user ID)"),
+    BotCommand("unmute", "Unmute a member (reply or user ID)"),
 ])
 
 
@@ -46,7 +49,7 @@ async def _require_group_admin(update: Update, context: ContextTypes.DEFAULT_TYP
     try:
         member = await context.bot.get_chat_member(chat.id, user.id)
         if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER, "creator"):
-            await message.reply_text("⛔ Sirf group admins /ban aur /unban use kar sakte hain.")
+            await message.reply_text("⛔ Sirf group admins /ban, /unban, /mute aur /unmute use kar sakte hain.")
             return False
 
         bot_member = await context.bot.get_chat_member(chat.id, context.bot.id)
@@ -139,6 +142,72 @@ async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.warning("Ban failed in chat %s for user %s: %s", chat.id, target.id, exc)
         await message.reply_text(
             "❌ Ban nahi ho paaya. Check karo ki bot admin hai aur uske paas Ban users permission hai."
+        )
+
+
+async def mute_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Mute a non-admin group member until an admin explicitly unmutes them."""
+    message = update.effective_message
+    chat = update.effective_chat
+    if not message or not chat:
+        return
+    if not await _require_group_admin(update, context):
+        return
+
+    target, _ = await _resolve_target(update, context)
+    if not target:
+        await message.reply_text(
+            "Usage:\\n• Reply to a member's message: /mute\\n"
+            "• Or use: /mute USER_ID\\n\\n"
+            "Username se user resolve nahi hota; reply ya numeric Telegram ID use karo."
+        )
+        return
+
+    if target.id in {context.bot.id, OWNER_ID} or getattr(target, "is_bot", False):
+        await message.reply_text("⛔ Bot, bots, ya bot owner ko mute nahi kar sakte.")
+        return
+
+    try:
+        target_member = await context.bot.get_chat_member(chat.id, target.id)
+        if target_member.status in (
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.OWNER,
+            "creator",
+        ):
+            await message.reply_text("⛔ Group admin/owner ko mute nahi kar sakte.")
+            return
+        if target_member.status not in (ChatMemberStatus.MEMBER, ChatMemberStatus.RESTRICTED):
+            await message.reply_text("ℹ️ Ye user is GC ka active member nahi hai.")
+            return
+    except TelegramError:
+        await message.reply_text("❌ Member verify nahi ho paaya. Reply ya sahi USER_ID use karo.")
+        return
+
+    try:
+        await context.bot.restrict_chat_member(
+            chat_id=chat.id,
+            user_id=target.id,
+            permissions=ChatPermissions(
+                can_send_messages=False,
+                can_send_audios=False,
+                can_send_documents=False,
+                can_send_photos=False,
+                can_send_videos=False,
+                can_send_video_notes=False,
+                can_send_voice_notes=False,
+                can_send_polls=False,
+                can_send_other_messages=False,
+                can_add_web_page_previews=False,
+            ),
+        )
+        await message.reply_text(
+            f"🔇 {getattr(target, 'full_name', None) or getattr(target, 'first_name', None) or target.id} "
+            "ko mute kar diya gaya. Ab ye GC mein messages nahi bhej sakta."
+        )
+    except TelegramError as exc:
+        logger.warning("Mute failed in chat %s for user %s: %s", chat.id, target.id, exc)
+        await message.reply_text(
+            "❌ Mute nahi ho paaya. Check karo bot admin hai aur uske paas Restrict members permission hai."
         )
 
 
