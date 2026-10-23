@@ -39,6 +39,12 @@ from bot.moderation import (
     configure_moderation_command_menus,
 )
 
+from bot.sticker_filters import (
+    filter_command,
+    unfilter_command,
+    handle_filtered_mentions,
+)
+
 from bot.command_help import command_help_callback
 
 from bot.handlers import (
@@ -287,6 +293,10 @@ async def main():
         CommandHandler("unban", unban_command)
     )
 
+    # Save/remove username sticker filters; handlers enforce group-admin access.
+    application.add_handler(CommandHandler("filter", filter_command))
+    application.add_handler(CommandHandler("unfilter", unfilter_command))
+
     # /broadcast is registered as a real handler and is protected
     # inside broadcast_command so only the owner + trusted user can use it.
     application.add_handler(
@@ -330,6 +340,15 @@ async def main():
         CallbackQueryHandler(
             command_help_callback,
             pattern=r"^help_commands$|^help_cmd_",
+        ),
+        group=-1,
+    )
+
+    # Automatically send saved stickers when a username is mentioned in a group.
+    application.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            handle_filtered_mentions,
         ),
         group=-1,
     )

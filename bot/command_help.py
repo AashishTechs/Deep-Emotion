@@ -19,7 +19,7 @@ def _back_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def _commands_text(*, show_owner: bool) -> str:
+def _commands_text(*, show_owner: bool, show_group_admin: bool = False) -> str:
     """Build the complete command list as one HTML-formatted Telegram message."""
     text = (
         "📖 <b>ᴅᴇᴇᴘ ᴇᴍᴏᴛɪᴏɴ — ᴀʟʟ ʙᴏᴛ ᴄᴏᴍᴍᴀɴᴅs</b>\n"
@@ -56,7 +56,10 @@ def _commands_text(*, show_owner: bool) -> str:
         "│ <code>/joinpanel</code> — Join panel status/help\n"
         "│ <code>/joinpanel_on</code> — Join panel ON karo\n"
         "│ <code>/joinpanel_off</code> — Join panel OFF karo\n"
-        "╰━━━━━━━━━━━━━━━━━━╯"
+        + ("│ <code>/filter @username</code> — Reply sticker ko username se save karo\n"
+           "│ <code>/unfilter @username</code> — Saved sticker filter hatao\n"
+           if show_group_admin else "")
+        + "╰━━━━━━━━━━━━━━━━━━╯"
     )
 
     if show_owner:
@@ -98,7 +101,19 @@ async def command_help_callback(
         _is_owner_or_trusted(query.from_user.id)
         and query.message.chat.type == "private"
     )
-    text = _commands_text(show_owner=show_owner)
+    show_group_admin = False
+    if query.message.chat.type in ("group", "supergroup"):
+        try:
+            member = await context.bot.get_chat_member(
+                query.message.chat.id, query.from_user.id
+            )
+            show_group_admin = member.status in ("administrator", "creator")
+        except TelegramError:
+            show_group_admin = False
+    text = _commands_text(
+        show_owner=show_owner,
+        show_group_admin=show_group_admin,
+    )
     markup = _back_keyboard()
 
     try:
