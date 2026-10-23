@@ -36,9 +36,10 @@ from bot.join_requests import (
 from bot.moderation import (
     ban_command,
     unban_command,
-    moderation_commands_callback,
     configure_moderation_command_menus,
 )
+
+from bot.command_help import command_help_callback
 
 from bot.handlers import (
     start,
@@ -327,8 +328,8 @@ async def main():
     # Override the Commands panel to include /ban and /unban.
     application.add_handler(
         CallbackQueryHandler(
-            moderation_commands_callback,
-            pattern=r"^help_commands$",
+            command_help_callback,
+            pattern=r"^help_commands$|^help_cmd_",
         ),
         group=-1,
     )
