@@ -276,15 +276,46 @@ DAILY MODE (PRIVATE CHAT ONLY)
         await _remove_callback_panel(query)
         await context.bot.send_message(
             chat_id=chat_id,
-            text="""🎮 HOW TO PLAY
+            text="""▸ HOW TO PLAY WORD GAME!
 
-1. Start a game with /new, /new4, /new5, or /new6.
-2. Send a word with the same number of letters as the selected mode.
-3. 🟩 means the letter is correct and in the right position.
-4. 🟨 means the letter is in the word but in the wrong position.
-5. 🟥 means the letter is not in the hidden word.
-6. The first player to guess correctly wins.
-7. A round allows up to 30 guesses.""",
+> 1. Start a game using /new, /new4, /new5, or /new6
+> 2. Guess the hidden word.
+> 3. After each guess, you'll get color hints:
+>    🟩 Correct letter in the right spot
+>    🟨 Correct letter in the wrong spot
+>    🟥 Letter not in the word
+> 4. First person to guess correctly wins!
+> 5. Maximum 30 guesses per game.
+
+WORD LENGTH MODES
+
+> • /new → Start the default 5-letter game
+> • /new 4, /new 5, or /new 6 → Choose a word length
+> • /new4 → Start a 4-letter game
+> • /new5 → Start a 5-letter game
+> • /new6 → Start a 6-letter game
+
+BASIC COMMANDS
+
+• /new - Start a new game (default 5 letters)
+• /new4 - Start a 4-letter game
+• /new5 - Start a 5-letter game
+• /new6 - Start a 6-letter game
+• /end - End the current game (subject to game permissions)
+• /helpwords - Show this help menu
+• /daily - Play Daily WordSeek (private chat only)
+• /pausedaily - Pause Daily mode and return to normal games
+
+DAILY MODE (PRIVATE CHAT ONLY)
+
+> • Start a daily puzzle using /daily.
+> • Each day has one fixed word.
+> • You get only 6 guesses per daily puzzle.
+> • A new puzzle unlocks daily at 06:00 Kathmandu time (UTC+5:45).
+> • Build a streak by solving puzzles without failing.
+> • Normal and Daily modes cannot run at the same time:
+>   - If a normal game is running, end it before using /daily.
+>   - If Daily mode is active, use /pausedaily to return to normal games.""",
             reply_markup=help_keyboard(),
         )
         return
