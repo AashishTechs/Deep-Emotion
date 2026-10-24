@@ -171,6 +171,21 @@ async def wordgame_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         WORD_GAME_IMAGE_FILE_ID = sent.photo[-1].file_id
 
 
+async def _edit_callback_panel(query, text, reply_markup, parse_mode=None):
+    """Update the existing panel in place to avoid slow delete-then-send calls."""
+    if query.message and query.message.photo:
+        return await query.edit_message_caption(
+            caption=text,
+            parse_mode=parse_mode,
+            reply_markup=reply_markup,
+        )
+    return await query.edit_message_text(
+        text=text,
+        parse_mode=parse_mode,
+        reply_markup=reply_markup,
+    )
+
+
 async def _remove_callback_panel(query):
     try:
         await query.message.delete()
@@ -201,13 +216,18 @@ async def word_game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user = query.from_user
 
     if data == "wg:home":
-        await _remove_callback_panel(query)
-        await _send_game_home(context, chat_id)
+        if query.message.photo:
+            await query.edit_message_caption(
+                caption=WELCOME_CAPTION,
+                reply_markup=game_keyboard(),
+            )
+        else:
+            await _remove_callback_panel(query)
+            await _send_game_home(context, chat_id)
         return
     if data == "wg:play":
-        await _remove_callback_panel(query)
-        await context.bot.send_message(
-            chat_id=chat_id,
+        await _edit_callback_panel(
+            query,
             text="""🎮 Choose your word length:
 
 4 letters · 5 letters · 6 letters
@@ -235,9 +255,8 @@ You get up to 30 guesses.""",
         )
         return
     if data == "wg:help":
-        await _remove_callback_panel(query)
-        await context.bot.send_message(
-            chat_id=chat_id,
+        await _edit_callback_panel(
+            query,
             text="""▸ HOW TO PLAY WORD GAME!
 
 > 1. Start a game using /new, /new4, /new5, or /new6
@@ -282,9 +301,8 @@ DAILY MODE (PRIVATE CHAT ONLY)
         )
         return
     if data == "wg:howto":
-        await _remove_callback_panel(query)
-        await context.bot.send_message(
-            chat_id=chat_id,
+        await _edit_callback_panel(
+            query,
             text="""▸ HOW TO PLAY WORD GAME!
 
 > 1. Start a game using /new, /new4, /new5, or /new6
@@ -329,9 +347,8 @@ DAILY MODE (PRIVATE CHAT ONLY)
         )
         return
     if data == "wg:groupsettings":
-        await _remove_callback_panel(query)
-        await context.bot.send_message(
-            chat_id=chat_id,
+        await _edit_callback_panel(
+            query,
             text="""<b>▸ Group Settings (Admin Only)</b>
 
 <b>Authorized Users</b>
@@ -381,9 +398,8 @@ When enabled, if the topic automatically expires (Telegram forum feature), the b
         )
         return
     if data == "wg:commands":
-        await _remove_callback_panel(query)
-        await context.bot.send_message(
-            chat_id=chat_id,
+        await _edit_callback_panel(
+            query,
             text="""📋 WORD GAME COMMANDS
 
 /new — Start the default 5-letter game
@@ -398,9 +414,8 @@ When enabled, if the topic automatically expires (Telegram forum feature), the b
         )
         return
     if data == "wg:leaderboard":
-        await _remove_callback_panel(query)
-        await context.bot.send_message(
-            chat_id=chat_id,
+        await _edit_callback_panel(
+            query,
             text="""<b>▸ Leaderboard &amp; Scores</b>
 
 <b>Quick Examples:</b>
@@ -471,9 +486,8 @@ Same as /leaderboard""",
             text = """📊 YOUR WORDS GAME STATS
 
 You have not played yet. Tap Play to start!"""
-        await _remove_callback_panel(query)
-        await context.bot.send_message(
-            chat_id=chat_id,
+        await _edit_callback_panel(
+            query,
             text=text,
             reply_markup=footer_keyboard(),
         )
