@@ -49,6 +49,7 @@ from bot.sticker_filters import (
 )
 
 from bot.command_help import command_help_callback
+from bot.word_game import init_word_game_db, word_game_callback, word_guess_handler
 
 from bot.handlers import (
     start,
@@ -111,6 +112,7 @@ def start_health_server():
 
 async def main():
     await init_db()
+    await init_word_game_db()
 
     application = (
         Application
@@ -181,6 +183,11 @@ async def main():
         group=-2,
     )
 
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, word_guess_handler),
+        group=-4,
+    )
+    application.add_handler(CallbackQueryHandler(word_game_callback, pattern=r"^wg:"))
     application.add_handler(
         CallbackQueryHandler(truth_dare_callback, pattern=r"^td:")
     )
