@@ -703,7 +703,7 @@ async def word_guess_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if guess not in WORDS[row["word_length"]]:
         await context.bot.send_message(
             chat_id=chat.id,
-            text=f"❌ <b>{guess}</b> is not a valid {row['word_length']}-letter word. Try a real word!",
+            text="❌ Invalid word! Please enter a meaningful word. 💗",
             parse_mode="HTML",
         )
         try:
