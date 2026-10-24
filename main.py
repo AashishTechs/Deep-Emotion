@@ -49,7 +49,7 @@ from bot.sticker_filters import (
 )
 
 from bot.command_help import command_help_callback
-from bot.word_game import init_word_game_db, word_game_callback, word_guess_handler
+from bot.word_game import init_word_game_db, wordgame_command, word_game_callback, word_guess_handler
 
 from bot.handlers import (
     start,
@@ -125,6 +125,7 @@ async def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("ask", ask))
     application.add_handler(CommandHandler("game", game_command))
+    application.add_handler(CommandHandler("wordgame", wordgame_command))
     application.add_handler(CommandHandler("truth", truth_command))
     application.add_handler(CommandHandler("dare", dare_command))
     application.add_handler(CommandHandler("td", truth_dare_command))
