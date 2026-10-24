@@ -86,23 +86,23 @@ def game_keyboard():
 def mode_keyboard():
     return InlineKeyboardMarkup([
         [_button("4-Letter", callback_data="wg:mode:4"), _button("5-Letter", callback_data="wg:mode:5"), _button("6-Letter", callback_data="wg:mode:6")],
-        [_button("🔙 Words Game", callback_data="wg:home")],
+        [_button("🔙 Words Game", callback_data="wg:home", style="danger")],
     ])
 
 def footer_keyboard():
     return InlineKeyboardMarkup([
         [_button("🔔 Updates", url=UPDATES_URL, style="success"), _button("Help", callback_data="wg:help", style="danger"), _button("💬 Discussion", url=DISCUSSION_URL, style="primary")],
-        [_button("🏆 Leaderboard", callback_data="wg:leaderboard"), _button("📊 My Stats", callback_data="wg:stats")],
+        [_button("🏆 Leaderboard", callback_data="wg:leaderboard", style="success"), _button("📊 My Stats", callback_data="wg:stats")],
         [_button("🛑 End Round", callback_data="wg:cancel")],
-        [_button("🔙 Words Game", callback_data="wg:home")],
+        [_button("🔙 Words Game", callback_data="wg:home", style="danger")],
     ])
 
 def help_keyboard():
     return InlineKeyboardMarkup([
-        [_button("🎮 How To Play", callback_data="wg:howto"), _button("🏆 Leaderboard", callback_data="wg:leaderboard")],
-        [_button("⚙️ Group Settings", callback_data="wg:groupsettings"), _button("📋 Other Commands", callback_data="wg:commands")],
+        [_button("🎮 How To Play", callback_data="wg:howto", style="primary"), _button("🏆 Leaderboard", callback_data="wg:leaderboard", style="success")],
+        [_button("⚙️ Group Settings", callback_data="wg:groupsettings", style="danger"), _button("📋 Other Commands", callback_data="wg:commands", style="primary")],
         [_button("🔔 Update", url=UPDATES_URL, style="success"), _button("💬 Discussion", url=DISCUSSION_URL, style="primary")],
-        [_button("🔙 Words Game", callback_data="wg:home")],
+        [_button("🔙 Words Game", callback_data="wg:home", style="danger")],
     ])
 
 def _game_text(length, guesses, word=None, ended=False, winner=None):
