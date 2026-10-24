@@ -127,6 +127,20 @@ async def _show_game(context, chat_id, row, winner=None, ended=False):
     except Exception:
         pass
 
+async def wordgame_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Open the Words Game panel directly with /wordgame in private or group chats."""
+    message = update.effective_message
+    if not message:
+        return
+    await message.reply_text(
+        "🎮 DEEP EMOTIONS · WORDS GAME\n\n"
+        "Guess the hidden word in 4, 5, or 6 letters.\n\n"
+        "🟩 Correct position · 🟨 Wrong position · 🟥 Not in word\n\n"
+        "Choose an option:",
+        reply_markup=game_keyboard(),
+    )
+
+
 async def word_game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not query or not query.message:
