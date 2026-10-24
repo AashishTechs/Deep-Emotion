@@ -15,6 +15,19 @@ from bot.database import DB_PATH
 
 UPDATES_URL = "https://t.me/BotUpdates0fficial"
 DISCUSSION_URL = "https://t.me/+cGoEVo7d8YtjOTI9"
+WORD_GAME_IMAGE_URL = (
+    "https://raw.githubusercontent.com/"
+    "AashishTechs/Deep-Emotion/main/Welcome2.jpg"
+)
+WELCOME_CAPTION = (
+    "Welcome to Word Game!\n\n"
+    "A fun and competitive Wordle-style game that you can play directly on Telegram.\n\n"
+    "Quick Start:\n"
+    "• Use /new to start a new game\n"
+    "• Add me to a group with admin permissions to play with friends\n"
+    "• Use /helpwrods for detailed instructions and command list\n\n"
+    "Ready to test your word skills? Let's play!"
+)
 MAX_GUESSES = 30
 
 WORDS = {
@@ -59,9 +72,11 @@ def game_keyboard():
     return InlineKeyboardMarkup([
         [_button("▶️ Play", callback_data="wg:play"), _button("🏆 Leaderboard", callback_data="wg:leaderboard")],
         [_button("📊 My Stats", callback_data="wg:stats")],
-        [_button("🔔 Updates", url=UPDATES_URL), _button("❔ Help", callback_data="wg:help"), _button("💬 Discussion", url=DISCUSSION_URL)],
+        [_button("🔔 Update", url=UPDATES_URL), _button("❔ Help & Discussion", callback_data="wg:help")],
+        [_button("👥 Group Chat", url=DISCUSSION_URL), _button("📢 Channel", url=UPDATES_URL)],
         [_button("🔙 Back to Games", callback_data="help_main")],
     ])
+
 
 def mode_keyboard():
     return InlineKeyboardMarkup([
@@ -134,15 +149,30 @@ async def _show_game(context, chat_id, row, winner=None, ended=False):
         )
 
 async def wordgame_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Open the Words Game panel directly with /wordgame in private or group chats."""
+    """Open the image welcome panel directly with /wordgame."""
     message = update.effective_message
     if not message:
         return
-    await message.reply_text(
-        "🎮 DEEP EMOTIONS · WORDS GAME\n\n"
-        "Guess the hidden word in 4, 5, or 6 letters.\n\n"
-        "🟩 Correct position · 🟨 Wrong position · 🟥 Not in word\n\n"
-        "Choose an option:",
+    await message.reply_photo(
+        photo=WORD_GAME_IMAGE_URL,
+        caption=WELCOME_CAPTION,
+        reply_markup=game_keyboard(),
+    )
+
+
+async def _remove_callback_panel(query):
+    try:
+        await query.message.delete()
+    except Exception:
+        # If Telegram will not delete the old panel, still show the requested view.
+        pass
+
+
+async def _send_game_home(context, chat_id):
+    await context.bot.send_photo(
+        chat_id=chat_id,
+        photo=WORD_GAME_IMAGE_URL,
+        caption=WELCOME_CAPTION,
         reply_markup=game_keyboard(),
     )
 
@@ -157,20 +187,14 @@ async def word_game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user = query.from_user
 
     if data == "wg:home":
-        await query.edit_message_text(
-            """🎮 DEEP EMOTIONS · WORDS GAME
-
-Guess the hidden word in 4, 5, or 6 letters.
-
-🟩 Correct position · 🟨 Wrong position · 🟥 Not in word
-
-Choose an option:""",
-            reply_markup=game_keyboard(),
-        )
+        await _remove_callback_panel(query)
+        await _send_game_home(context, chat_id)
         return
     if data == "wg:play":
-        await query.edit_message_text(
-            """🎮 Choose your word length:
+        await _remove_callback_panel(query)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="""🎮 Choose your word length:
 
 4 letters · 5 letters · 6 letters
 You get up to 30 guesses.""",
@@ -197,8 +221,10 @@ You get up to 30 guesses.""",
         )
         return
     if data == "wg:help":
-        await query.edit_message_text(
-            """❔ WORDS GAME HELP
+        await _remove_callback_panel(query)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="""❔ WORDS GAME HELP
 
 1. Choose 4-, 5-, or 6-letter mode.
 2. Send a word of the selected length in this chat.
@@ -221,7 +247,12 @@ In groups, everyone can guess and the first correct player wins.""",
         else:
             for idx, (name, wins, games) in enumerate(rows, 1):
                 lines.append(f"{idx}. {name} — {wins} wins / {games} rounds")
-        await query.edit_message_text("\n".join(lines), reply_markup=footer_keyboard())
+        await _remove_callback_panel(query)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="\n".join(lines),
+            reply_markup=footer_keyboard(),
+        )
         return
     if data == "wg:stats":
         async with _connect() as db:
@@ -240,7 +271,12 @@ In groups, everyone can guess and the first correct player wins.""",
             text = """📊 YOUR WORDS GAME STATS
 
 You have not played yet. Tap Play to start!"""
-        await query.edit_message_text(text, reply_markup=footer_keyboard())
+        await _remove_callback_panel(query)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            reply_markup=footer_keyboard(),
+        )
         return
     if data.startswith("wg:mode:"):
         try:
