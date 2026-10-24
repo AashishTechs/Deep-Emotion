@@ -74,7 +74,7 @@ def _button(label, callback_data=None, url=None):
 def game_keyboard():
     # Keep the welcome panel buttons: Update, Help, and Discussion.
     return InlineKeyboardMarkup([
-        [_button("🔔 Update", url=UPDATES_URL), _button("❔ Help", callback_data="wg:help"), _button("💬 Discussion", url=DISCUSSION_URL)],
+        [_button("🔔 Update", url=UPDATES_URL), _button("Help", callback_data="wg:help"), _button("💬 Discussion", url=DISCUSSION_URL)],
     ])
 
 
@@ -86,7 +86,7 @@ def mode_keyboard():
 
 def footer_keyboard():
     return InlineKeyboardMarkup([
-        [_button("🔔 Updates", url=UPDATES_URL), _button("❔ Help", callback_data="wg:help"), _button("💬 Discussion", url=DISCUSSION_URL)],
+        [_button("🔔 Updates", url=UPDATES_URL), _button("Help", callback_data="wg:help"), _button("💬 Discussion", url=DISCUSSION_URL)],
         [_button("🏆 Leaderboard", callback_data="wg:leaderboard"), _button("📊 My Stats", callback_data="wg:stats")],
         [_button("🛑 End Round", callback_data="wg:cancel")],
         [_button("🔙 Words Game", callback_data="wg:home")],
