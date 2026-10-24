@@ -292,15 +292,51 @@ DAILY MODE (PRIVATE CHAT ONLY)
         await _remove_callback_panel(query)
         await context.bot.send_message(
             chat_id=chat_id,
-            text="""⚙️ GROUP GAME SETUP
+            text="""<b>▸ Group Settings (Admin Only)</b>
 
-• Add the bot to your group.
-• Make sure group members can send messages.
-• Use /new, /new4, /new5, or /new6 to start a round.
-• Everyone in the group can submit guesses; the first correct guess wins.
-• Use the End Round button on the game panel to end a round when permitted.
+<b>Authorized Users</b>
 
-If commands or guesses do not respond, check that the bot is still in the group and that group permissions allow it to read messages.""",
+<code>/seekauth</code> — Manage users who can end games without a vote.
+
+<b>Usage:</b>
+• <code>/seekauth @username</code> — Authorize a user
+• <code>/seekauth remove @username</code> — Remove authorization
+• <code>/seekauth list</code> — List all authorized users
+
+You can also use a user ID or reply to a message instead of @username.
+
+<b>Game Topic (Forum Groups)</b>
+
+<code>/setgametopic</code> — Restrict games to one or more topics
+
+Run this command <i>inside the topic</i> where you want games to be played.
+After setting, the bot will only run games in that topic.
+
+<code>/unsetgametopic</code> — Remove topic restriction
+
+<b>Usage:</b> <code>/unsetgametopic</code>
+
+After unsetting, the bot can run games in any topic in the group again. If there are other topics set, the bot will only run in those topics.
+
+<code>/allowonlylen</code> — Restrict allowed word lengths in this topic
+
+<b>Usage:</b> <code>/allowonlylen 4</code> or <code>/allowonlylen 5 6</code>
+
+Run this inside a game topic.
+
+You can allow one or more of: 4, 5, 6.
+The first number you specify becomes the default length for /new in that topic.
+
+If not configured, all lengths (4, 5, 6) are allowed by default.
+
+<code>/recreatetopic</code> — Auto-recreate topic when it expires
+
+<b>Usage:</b> <code>/recreatetopic on</code> or <code>/recreatetopic off</code>
+
+Run this command inside a game topic.
+
+When enabled, if the topic automatically expires (Telegram forum feature), the bot will recreate the same topic so games can continue.""",
+            parse_mode="HTML",
             reply_markup=help_keyboard(),
         )
         return
