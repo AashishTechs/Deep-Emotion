@@ -89,8 +89,7 @@ def _game_text(length, guesses, word=None, ended=False, winner=None):
         lines.extend(["", f"Round over! The word was: {word}"])
     else:
         lines.extend(["", "🟩 Correct place   🟨 Wrong place   🟥 Not in word", "Send your guess as a message."])
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 def _feedback(guess, answer):
     remaining = {}
@@ -152,28 +151,28 @@ async def word_game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     if data == "wg:home":
         await query.edit_message_text(
-            "🎮 DEEP EMOTIONS · WORDS GAME
+            """🎮 DEEP EMOTIONS · WORDS GAME
 
 Guess the hidden word in 4, 5, or 6 letters.
 
 🟩 Correct position · 🟨 Wrong position · 🟥 Not in word
 
-Choose an option:",
+Choose an option:""",
             reply_markup=game_keyboard(),
         )
         return
     if data == "wg:play":
         await query.edit_message_text(
-            "🎮 Choose your word length:
+            """🎮 Choose your word length:
 
 4 letters · 5 letters · 6 letters
-You get up to 30 guesses.",
+You get up to 30 guesses.""",
             reply_markup=mode_keyboard(),
         )
         return
     if data == "wg:help":
         await query.edit_message_text(
-            "❔ WORDS GAME HELP
+            """❔ WORDS GAME HELP
 
 1. Choose 4-, 5-, or 6-letter mode.
 2. Send a word of the selected length in this chat.
@@ -182,7 +181,7 @@ You get up to 30 guesses.",
 5. 🟥 letter is not in the word.
 6. The round ends when someone guesses correctly or after 30 guesses.
 
-In groups, everyone can guess and the first correct player wins.",
+In groups, everyone can guess and the first correct player wins.""",
             reply_markup=footer_keyboard(),
         )
         return
@@ -196,8 +195,7 @@ In groups, everyone can guess and the first correct player wins.",
         else:
             for idx, (name, wins, games) in enumerate(rows, 1):
                 lines.append(f"{idx}. {name} — {wins} wins / {games} rounds")
-        await query.edit_message_text("
-".join(lines), reply_markup=footer_keyboard())
+        await query.edit_message_text("\n".join(lines), reply_markup=footer_keyboard())
         return
     if data == "wg:stats":
         async with await _connect() as db:
@@ -206,16 +204,16 @@ In groups, everyone can guess and the first correct player wins.",
         if row:
             wins, games, total_guesses = row
             rate = round((wins / games) * 100) if games else 0
-            text = f"📊 YOUR WORDS GAME STATS
+            text = f"""📊 YOUR WORDS GAME STATS
 
 🏆 Wins: {wins}
 🎮 Rounds played: {games}
 🎯 Total guesses: {total_guesses}
-📈 Win rate: {rate}%"
+📈 Win rate: {rate}%"""
         else:
-            text = "📊 YOUR WORDS GAME STATS
+            text = """📊 YOUR WORDS GAME STATS
 
-You have not played yet. Tap Play to start!"
+You have not played yet. Tap Play to start!"""
         await query.edit_message_text(text, reply_markup=footer_keyboard())
         return
     if data.startswith("wg:mode:"):
