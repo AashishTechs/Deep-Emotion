@@ -95,7 +95,6 @@ def _normalize_target(value: str) -> str | None:
     if USER_ID_RE.fullmatch(target):
         return f"id:{target}"
 
-    # Unprefixed text is treated as a display name, not as a username.
     name = _normalize_name(target)
     if name and len(name) <= 100:
         return f"name:{name}"
@@ -193,8 +192,25 @@ async def handle_filtered_mentions(update: Update, context: ContextTypes.DEFAULT
     """Send a saved sticker for username/user-ID mentions or display-name text."""
     message = update.effective_message
     chat = update.effective_chat
+    user = update.effective_user
     if not message or not chat or not _is_group(chat):
         return
+
+    # Cache every member who sends a normal group message. Moderation commands
+    # can then resolve /mute and /unmute by username or display name instantly.
+    if user:
+        username = (getattr(user, "username", None) or "").casefold()
+        name = _normalize_name(getattr(user, "full_name", None) or getattr(user, "first_name", None) or "")
+        if username or name:
+            cache = context.application.bot_data.setdefault("moderation_members", {})
+            group_cache = cache.setdefault(chat.id, {})
+            group_cache[user.id] = {
+                "id": user.id,
+                "username": username,
+                "name": name,
+                "full_name": getattr(user, "full_name", None) or getattr(user, "first_name", None) or str(user.id),
+                "is_bot": bool(getattr(user, "is_bot", False)),
+            }
 
     text = message.text or ""
     if not text:
