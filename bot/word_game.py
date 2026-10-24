@@ -686,10 +686,17 @@ async def word_guess_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if chat.type == "private" and row["owner_user_id"] != user.id:
         return
     if len(guess) != row["word_length"]:
-        await message.reply_text(
-            f"🔤 This round needs a {row['word_length']}-letter word. "
-            f"Your guess has {len(guess)} letters. Try again!"
+        await context.bot.send_message(
+            chat_id=chat.id,
+            text=(
+                f"🔤 This round needs a {row['word_length']}-letter word. "
+                f"Your guess has {len(guess)} letters. Try again!"
+            ),
         )
+        try:
+            await message.delete()
+        except Exception:
+            pass  # Deletion can fail if the bot lacks permission or the message is too old.
         raise ApplicationHandlerStop
     guesses = json.loads(row["guesses_json"])
     guess_limit = 6 if row["daily_mode"] else MAX_GUESSES
@@ -730,9 +737,17 @@ async def word_guess_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     row = await _fetch_game(chat.id)
     if correct:
         await _show_game(context, chat.id, row, winner=user.full_name or user.first_name or "Player")
-        await message.reply_text(f"🏆 {user.first_name or 'Player'} won the round! The word was {row['word']}.")
+        await context.bot.send_message(
+            chat_id=chat.id,
+            text=f"🏆 {user.first_name or 'Player'} won the round! The word was {row['word']}.",
+        )
     elif ended:
         await _show_game(context, chat.id, row, ended=True)
     else:
         await _show_game(context, chat.id, row)
+    # Keep the single game panel; remove the player's standalone guess message.
+    try:
+        await message.delete()
+    except Exception:
+        pass  # Telegram may reject deletion when the bot lacks permission.
     raise ApplicationHandlerStop
