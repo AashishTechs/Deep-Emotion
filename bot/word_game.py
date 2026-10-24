@@ -73,6 +73,7 @@ def footer_keyboard():
     return InlineKeyboardMarkup([
         [_button("🔔 Updates", url=UPDATES_URL), _button("❔ Help", callback_data="wg:help"), _button("💬 Discussion", url=DISCUSSION_URL)],
         [_button("🏆 Leaderboard", callback_data="wg:leaderboard"), _button("📊 My Stats", callback_data="wg:stats")],
+        [_button("🛑 End Round", callback_data="wg:cancel")],
         [_button("🔙 Words Game", callback_data="wg:home")],
     ])
 
@@ -124,7 +125,13 @@ async def _show_game(context, chat_id, row, winner=None, ended=False):
             reply_markup=footer_keyboard(),
         )
     except Exception:
-        pass
+        # The original panel may have been deleted or become uneditable.
+        # Keep feedback visible by sending a fresh panel instead of failing silently.
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            reply_markup=footer_keyboard(),
+        )
 
 async def wordgame_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Open the Words Game panel directly with /wordgame in private or group chats."""
@@ -168,6 +175,22 @@ Choose an option:""",
 4 letters · 5 letters · 6 letters
 You get up to 30 guesses.""",
             reply_markup=mode_keyboard(),
+        )
+        return
+    if data == "wg:cancel":
+        row = await _fetch_game(chat_id)
+        if not row or not row["active"]:
+            await query.answer("There is no active round.", show_alert=True)
+            return
+        if row["owner_user_id"] != user.id:
+            await query.answer("Only the player who started this round can end it.", show_alert=True)
+            return
+        async with _connect() as db:
+            await db.execute("UPDATE word_games SET active=0 WHERE chat_id=?", (chat_id,))
+            await db.commit()
+        await query.edit_message_text(
+            "🛑 Words Game round ended. Tap Play to start a new round.",
+            reply_markup=game_keyboard(),
         )
         return
     if data == "wg:help":
@@ -227,7 +250,8 @@ You have not played yet. Tap Play to start!"""
         if old and old["active"]:
             await context.bot.send_message(
                 chat_id=chat_id,
-                text="⏳ A Words Game round is already active in this chat. Finish it first.",
+                text="⏳ A Words Game round is already active in this chat. Finish it first, or use 🛑 End Round on the game panel.",
+                reply_markup=footer_keyboard(),
             )
             return
         word = random.choice(WORDS[length])
@@ -267,7 +291,11 @@ async def word_guess_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if chat.type == "private" and row["owner_user_id"] != user.id:
         return
     if len(guess) != row["word_length"]:
-        return
+        await message.reply_text(
+            f"🔤 This round needs a {row['word_length']}-letter word. "
+            f"Your guess has {len(guess)} letters. Try again!"
+        )
+        raise ApplicationHandlerStop
     guesses = json.loads(row["guesses_json"])
     if len(guesses) >= MAX_GUESSES:
         return
