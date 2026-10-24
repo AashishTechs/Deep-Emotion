@@ -213,7 +213,10 @@ You have not played yet. Tap Play to start!"
             return
         old = await _fetch_game(chat_id)
         if old and old["active"]:
-            await query.answer("A round is already active in this chat. Finish it first.", show_alert=True)
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="⏳ A Words Game round is already active in this chat. Finish it first.",
+            )
             return
         word = random.choice(WORDS[length])
         await query.edit_message_text(
