@@ -28,7 +28,7 @@ def _connect():
     return aiosqlite.connect(DB_PATH)
 
 async def init_word_game_db():
-    async with await _connect() as db:
+    async with _connect() as db:
         await db.execute("""
             CREATE TABLE IF NOT EXISTS word_games (
                 chat_id INTEGER PRIMARY KEY,
@@ -108,7 +108,7 @@ def _feedback(guess, answer):
     return " ".join(result)
 
 async def _fetch_game(chat_id):
-    async with await _connect() as db:
+    async with _connect() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM word_games WHERE chat_id=?", (chat_id,))
         return await cur.fetchone()
@@ -186,7 +186,7 @@ In groups, everyone can guess and the first correct player wins.""",
         )
         return
     if data == "wg:leaderboard":
-        async with await _connect() as db:
+        async with _connect() as db:
             cur = await db.execute("SELECT display_name, wins, games FROM word_game_scores ORDER BY wins DESC, games ASC LIMIT 10")
             rows = await cur.fetchall()
         lines = ["🏆 WORDS GAME LEADERBOARD", ""]
@@ -198,7 +198,7 @@ In groups, everyone can guess and the first correct player wins.""",
         await query.edit_message_text("\n".join(lines), reply_markup=footer_keyboard())
         return
     if data == "wg:stats":
-        async with await _connect() as db:
+        async with _connect() as db:
             cur = await db.execute("SELECT wins, games, total_guesses FROM word_game_scores WHERE user_id=?", (user.id,))
             row = await cur.fetchone()
         if row:
@@ -242,7 +242,7 @@ No guesses yet. Send a {length}-letter word in this chat to begin!
             reply_markup=footer_keyboard(),
         )
         panel_id = query.message.message_id
-        async with await _connect() as db:
+        async with _connect() as db:
             await db.execute(
                 """INSERT INTO word_games(chat_id, owner_user_id, word, word_length, guesses_json, active, panel_message_id, started_at)
                    VALUES(?,?,?,?, '[]', 1, ?, ?)
@@ -274,7 +274,7 @@ async def word_guess_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     guesses.append({"word": guess, "feedback": _feedback({"word": guess}, row["word"]), "user_id": user.id, "name": user.full_name or user.first_name or "Player"})
     correct = guess == row["word"]
     ended = correct or len(guesses) >= MAX_GUESSES
-    async with await _connect() as db:
+    async with _connect() as db:
         await db.execute(
             "UPDATE word_games SET guesses_json=?, active=? WHERE chat_id=?",
             (json.dumps(guesses), 0 if ended else 1, chat.id),
