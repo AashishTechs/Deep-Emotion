@@ -322,20 +322,60 @@ If commands or guesses do not respond, check that the bot is still in the group 
         )
         return
     if data == "wg:leaderboard":
-        async with _connect() as db:
-            cur = await db.execute("SELECT display_name, wins, games FROM word_game_scores ORDER BY wins DESC, games ASC LIMIT 10")
-            rows = await cur.fetchall()
-        lines = ["🏆 WORDS GAME LEADERBOARD", ""]
-        if not rows:
-            lines.append("No scores yet. Be the first to play!")
-        else:
-            for idx, (name, wins, games) in enumerate(rows, 1):
-                lines.append(f"{idx}. {name} — {wins} wins / {games} rounds")
         await _remove_callback_panel(query)
         await context.bot.send_message(
             chat_id=chat_id,
-            text="\n".join(lines),
-            reply_markup=footer_keyboard(),
+            text="""<b>▸ Leaderboard &amp; Scores</b>
+
+<b>Quick Examples:</b>
+
+<code>/leaderboard</code> — Group, today (default 5-letter)
+<code>/leaderboard 4</code> — 4-letter leaderboard (group, today)
+<code>/leaderboard global week 6</code> — Global rankings this week (6-letter mode)
+<code>/leaderboard month</code> — This group's monthly leaderboard
+
+<code>/score</code> — Your score (group, today, 5-letter by default)
+<code>/score 6</code> — Your 6-letter stats
+<code>/score @username global all 4</code> — Full 4-letter global history for a user
+<code>/score 123456789 month</code> — Monthly stats for a user
+
+<b>Leaderboard Command</b>
+
+<b>Syntax:</b> <code>/leaderboard [scope] [period] [length]</code>
+
+All parameters are optional and can be used in any order.
+
+<b>Scope:</b>
+• group (default) — Current group only
+• global — All groups combined
+
+<b>Period:</b>
+• today (default)
+• week
+• month
+• year
+• all
+
+<b>Length:</b>
+• 4 — 4-letter mode
+• 5 — 5-letter mode (default)
+• 6 — 6-letter mode
+
+<b>Score Command</b>
+
+<b>Syntax:</b> <code>/score [target] [scope] [period] [length]</code>
+
+All parameters are optional and can be used in any order.
+
+<b>Target (optional):</b>
+• Leave empty for your own score
+• @username — Look up by username
+• user_id — Look up by Telegram user ID
+
+<b>Scope, period &amp; length:</b>
+Same as /leaderboard""",
+            parse_mode="HTML",
+            reply_markup=help_keyboard(),
         )
         return
     if data == "wg:stats":
