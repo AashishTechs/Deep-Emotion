@@ -49,7 +49,11 @@ from bot.sticker_filters import (
 )
 
 from bot.command_help import command_help_callback
-from bot.word_game import init_word_game_db, wordgame_command, word_game_callback, word_guess_handler
+from bot.word_game import (
+    init_word_game_db, wordgame_command, word_game_callback, word_guess_handler,
+    new_word_command, new4_command, new5_command, new6_command,
+    end_word_command, helpwords_command, daily_word_command, pause_daily_command,
+)
 
 from bot.handlers import (
     start,
@@ -126,6 +130,14 @@ async def main():
     application.add_handler(CommandHandler("ask", ask))
     application.add_handler(CommandHandler("game", game_command))
     application.add_handler(CommandHandler("wordgame", wordgame_command))
+    application.add_handler(CommandHandler("new", new_word_command))
+    application.add_handler(CommandHandler("new4", new4_command))
+    application.add_handler(CommandHandler("new5", new5_command))
+    application.add_handler(CommandHandler("new6", new6_command))
+    application.add_handler(CommandHandler("end", end_word_command))
+    application.add_handler(CommandHandler("helpwords", helpwords_command))
+    application.add_handler(CommandHandler("daily", daily_word_command))
+    application.add_handler(CommandHandler("pausedaily", pause_daily_command))
     application.add_handler(CommandHandler("truth", truth_command))
     application.add_handler(CommandHandler("dare", dare_command))
     application.add_handler(CommandHandler("td", truth_dare_command))
