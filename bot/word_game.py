@@ -72,7 +72,7 @@ def game_keyboard():
     return InlineKeyboardMarkup([
         [_button("▶️ Play", callback_data="wg:play"), _button("🏆 Leaderboard", callback_data="wg:leaderboard")],
         [_button("📊 My Stats", callback_data="wg:stats")],
-        [_button("🔔 Update", url=UPDATES_URL), _button("❔ Help & Discussion", callback_data="wg:help")],
+        [_button("🔔 Update", url=UPDATES_URL), _button("❔ Help", callback_data="wg:help"), _button("💬 Discussion", url=DISCUSSION_URL)],
         [_button("👥 Group Chat", url=DISCUSSION_URL), _button("📢 Channel", url=UPDATES_URL)],
         [_button("🔙 Back to Games", callback_data="help_main")],
     ])
