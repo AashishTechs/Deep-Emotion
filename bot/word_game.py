@@ -58,8 +58,8 @@ def _button(label, callback_data=None, url=None):
 def game_keyboard():
     return InlineKeyboardMarkup([
         [_button("▶️ Play", callback_data="wg:play"), _button("🏆 Leaderboard", callback_data="wg:leaderboard")],
-        [_button("📊 My Stats", callback_data="wg:stats"), _button("❔ Help", callback_data="wg:help")],
-        [_button("🔔 Updates", url=UPDATES_URL), _button("💬 Discussion", url=DISCUSSION_URL)],
+        [_button("📊 My Stats", callback_data="wg:stats")],
+        [_button("🔔 Updates", url=UPDATES_URL), _button("❔ Help", callback_data="wg:help"), _button("💬 Discussion", url=DISCUSSION_URL)],
         [_button("🔙 Back to Games", callback_data="help_main")],
     ])
 
@@ -260,13 +260,33 @@ async def word_guess_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     correct = guess == row["word"]
     ended = correct or len(guesses) >= MAX_GUESSES
     async with await _connect() as db:
-        await db.execute("UPDATE word_games SET guesses_json=?, active=? WHERE chat_id=?", (json.dumps(guesses), 0 if ended else 1, chat.id))
+        await db.execute(
+            "UPDATE word_games SET guesses_json=?, active=? WHERE chat_id=?",
+            (json.dumps(guesses), 0 if ended else 1, chat.id),
+        )
         await db.execute(
             """INSERT INTO word_game_scores(user_id, display_name, wins, games, total_guesses)
-               VALUES(?,?,?,1,?)
-               ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name, wins=word_game_scores.wins+excluded.wins, games=word_game_scores.games+1, total_guesses=word_game_scores.total_guesses+excluded.total_guesses""",
-            (user.id, user.full_name or user.first_name or "Player", 1 if correct else 0, 1),
+               VALUES(?,?,0,0,1)
+               ON CONFLICT(user_id) DO UPDATE SET
+                 display_name=excluded.display_name,
+                 total_guesses=word_game_scores.total_guesses+1""",
+            (user.id, user.full_name or user.first_name or "Player"),
         )
+        if ended:
+            participants = {}
+            for item in guesses:
+                participants[item["user_id"]] = item["name"]
+            for participant_id, participant_name in participants.items():
+                won = 1 if correct and participant_id == user.id else 0
+                await db.execute(
+                    """INSERT INTO word_game_scores(user_id, display_name, wins, games, total_guesses)
+                       VALUES(?,?,?,1,0)
+                       ON CONFLICT(user_id) DO UPDATE SET
+                         display_name=excluded.display_name,
+                         wins=word_game_scores.wins+excluded.wins,
+                         games=word_game_scores.games+1""",
+                    (participant_id, participant_name, won),
+                )
         await db.commit()
     row = await _fetch_game(chat.id)
     if correct:
