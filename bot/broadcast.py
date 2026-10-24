@@ -275,6 +275,7 @@ DEFAULT_COMMANDS = [
     BotCommand("help", "Help & Commands"),
     BotCommand("ask", "Ask AI"),
     BotCommand("game", "Play a game"),
+    BotCommand("wordgame", "Open Words Game"),
     BotCommand("truth", "Truth"),
     BotCommand("dare", "Dare"),
     BotCommand("td", "Truth or Dare"),
