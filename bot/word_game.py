@@ -89,6 +89,14 @@ def footer_keyboard():
         [_button("🔙 Words Game", callback_data="wg:home")],
     ])
 
+def help_keyboard():
+    return InlineKeyboardMarkup([
+        [_button("🎮 How To Play", callback_data="wg:howto"), _button("🏆 Leaderboard", callback_data="wg:leaderboard")],
+        [_button("⚙️ Group Settings", callback_data="wg:groupsettings"), _button("📋 Other Commands", callback_data="wg:commands")],
+        [_button("🔔 Update", url=UPDATES_URL), _button("💬 Discussion", url=DISCUSSION_URL)],
+        [_button("🔙 Words Game", callback_data="wg:home")],
+    ])
+
 def _game_text(length, guesses, word=None, ended=False, winner=None):
     lines = [f"🎮 DEEP EMOTIONS · WORDS GAME", f"{length}-letter mode · {len(guesses)}/{MAX_GUESSES} guesses", ""]
     for guess in guesses:
@@ -221,17 +229,96 @@ You get up to 30 guesses.""",
         await _remove_callback_panel(query)
         await context.bot.send_message(
             chat_id=chat_id,
-            text="""❔ WORDS GAME HELP
+            text="""▸ HOW TO PLAY WORD GAME!
 
-1. Choose 4-, 5-, or 6-letter mode.
-2. Send a word of the selected length in this chat.
-3. 🟩 letter is correct and in the right place.
-4. 🟨 letter exists but is in the wrong place.
-5. 🟥 letter is not in the word.
-6. The round ends when someone guesses correctly or after 30 guesses.
+> 1. Start a game using /new, /new4, /new5, or /new6
+> 2. Guess the hidden word.
+> 3. After each guess, you'll get color hints:
+>    🟩 Correct letter in the right spot
+>    🟨 Correct letter in the wrong spot
+>    🟥 Letter not in the word
+> 4. First person to guess correctly wins!
+> 5. Maximum 30 guesses per game.
 
-In groups, everyone can guess and the first correct player wins.""",
-            reply_markup=footer_keyboard(),
+WORD LENGTH MODES
+
+> • /new → Start the default 5-letter game
+> • /new 4, /new 5, or /new 6 → Choose a word length
+> • /new4 → Start a 4-letter game
+> • /new5 → Start a 5-letter game
+> • /new6 → Start a 6-letter game
+
+BASIC COMMANDS
+
+• /new - Start a new game (default 5 letters)
+• /new4 - Start a 4-letter game
+• /new5 - Start a 5-letter game
+• /new6 - Start a 6-letter game
+• /end - End the current game (subject to game permissions)
+• /helpwords - Show this help menu
+• /daily - Play Daily WordSeek (private chat only)
+• /pausedaily - Pause Daily mode and return to normal games
+
+DAILY MODE (PRIVATE CHAT ONLY)
+
+> • Start a daily puzzle using /daily.
+> • Each day has one fixed word.
+> • You get only 6 guesses per daily puzzle.
+> • A new puzzle unlocks daily at 06:00 Kathmandu time (UTC+5:45).
+> • Build a streak by solving puzzles without failing.
+> • Normal and Daily modes cannot run at the same time:
+>   - If a normal game is running, end it before using /daily.
+>   - If Daily mode is active, use /pausedaily to return to normal games.""",
+            reply_markup=help_keyboard(),
+        )
+        return
+    if data == "wg:howto":
+        await _remove_callback_panel(query)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="""🎮 HOW TO PLAY
+
+1. Start a game with /new, /new4, /new5, or /new6.
+2. Send a word with the same number of letters as the selected mode.
+3. 🟩 means the letter is correct and in the right position.
+4. 🟨 means the letter is in the word but in the wrong position.
+5. 🟥 means the letter is not in the hidden word.
+6. The first player to guess correctly wins.
+7. A round allows up to 30 guesses.""",
+            reply_markup=help_keyboard(),
+        )
+        return
+    if data == "wg:groupsettings":
+        await _remove_callback_panel(query)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="""⚙️ GROUP GAME SETUP
+
+• Add the bot to your group.
+• Make sure group members can send messages.
+• Use /new, /new4, /new5, or /new6 to start a round.
+• Everyone in the group can submit guesses; the first correct guess wins.
+• Use the End Round button on the game panel to end a round when permitted.
+
+If commands or guesses do not respond, check that the bot is still in the group and that group permissions allow it to read messages.""",
+            reply_markup=help_keyboard(),
+        )
+        return
+    if data == "wg:commands":
+        await _remove_callback_panel(query)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="""📋 WORD GAME COMMANDS
+
+/new — Start the default 5-letter game
+/new4 — Start a 4-letter game
+/new5 — Start a 5-letter game
+/new6 — Start a 6-letter game
+/end — End the current game when permitted
+/helpwords — Open Word Game help
+/daily — Start Daily WordSeek in a private chat
+/pausedaily — Leave Daily mode and return to normal games""",
+            reply_markup=help_keyboard(),
         )
         return
     if data == "wg:leaderboard":
