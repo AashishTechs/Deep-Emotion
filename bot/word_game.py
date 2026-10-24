@@ -160,7 +160,6 @@ async def _show_game(context, chat_id, row, winner=None, ended=False):
             chat_id=chat_id,
             message_id=row["panel_message_id"],
             text=text,
-            reply_markup=footer_keyboard(),
         )
     except Exception:
         # The original panel may have been deleted or become uneditable.
@@ -168,7 +167,6 @@ async def _show_game(context, chat_id, row, winner=None, ended=False):
         await context.bot.send_message(
             chat_id=chat_id,
             text=text,
-            reply_markup=footer_keyboard(),
         )
 
 async def _start_word_round(update: Update, context: ContextTypes.DEFAULT_TYPE, length: int, daily: bool = False, daily_date: str = None, fixed_word: str = None):
@@ -195,7 +193,6 @@ async def _start_word_round(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         f"{title}\n\n{length}-letter mode · 0/{limit} guesses\n\n"
         f"No guesses yet. Send a {length}-letter word in this chat to begin!\n\n"
         "🟩 Correct place   🟨 Wrong place   🟥 Not in word",
-        reply_markup=footer_keyboard(),
     )
     async with _connect() as db:
         await db.execute(
@@ -665,7 +662,6 @@ You have not played yet. Tap Play to start!"""
 No guesses yet. Send a {length}-letter word in this chat to begin!
 
 🟩 Correct place   🟨 Wrong place   🟥 Not in the word""",
-            reply_markup=footer_keyboard(),
         )
         panel_id = query.message.message_id
         async with _connect() as db:
