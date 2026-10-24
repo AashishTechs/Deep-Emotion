@@ -180,10 +180,13 @@ You get up to 30 guesses.""",
     if data == "wg:cancel":
         row = await _fetch_game(chat_id)
         if not row or not row["active"]:
-            await query.answer("There is no active round.", show_alert=True)
+            await context.bot.send_message(chat_id=chat_id, text="There is no active Words Game round.")
             return
         if row["owner_user_id"] != user.id:
-            await query.answer("Only the player who started this round can end it.", show_alert=True)
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="Only the player who started this round can end it.",
+            )
             return
         async with _connect() as db:
             await db.execute("UPDATE word_games SET active=0 WHERE chat_id=?", (chat_id,))
