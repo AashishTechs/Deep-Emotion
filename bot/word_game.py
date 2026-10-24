@@ -69,12 +69,9 @@ def _button(label, callback_data=None, url=None):
     return InlineKeyboardButton(label, callback_data=callback_data, url=url)
 
 def game_keyboard():
+    # Keep only the three requested buttons on the Word Game welcome image.
     return InlineKeyboardMarkup([
-        [_button("▶️ Play", callback_data="wg:play"), _button("🏆 Leaderboard", callback_data="wg:leaderboard")],
-        [_button("📊 My Stats", callback_data="wg:stats")],
         [_button("🔔 Update", url=UPDATES_URL), _button("❔ Help", callback_data="wg:help"), _button("💬 Discussion", url=DISCUSSION_URL)],
-        [_button("👥 Group Chat", url=DISCUSSION_URL), _button("📢 Channel", url=UPDATES_URL)],
-        [_button("🔙 Back to Games", callback_data="help_main")],
     ])
 
 
