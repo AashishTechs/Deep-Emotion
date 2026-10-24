@@ -5,7 +5,8 @@
 
 import json
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 import aiosqlite
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -54,9 +55,17 @@ async def init_word_game_db():
                 guesses_json TEXT NOT NULL DEFAULT '[]',
                 active INTEGER NOT NULL DEFAULT 1,
                 panel_message_id INTEGER,
-                started_at TEXT NOT NULL
+                started_at TEXT NOT NULL,
+                daily_mode INTEGER NOT NULL DEFAULT 0,
+                daily_date TEXT
             )
         """)
+        cur = await db.execute("PRAGMA table_info(word_games)")
+        columns = {row[1] for row in await cur.fetchall()}
+        if "daily_mode" not in columns:
+            await db.execute("ALTER TABLE word_games ADD COLUMN daily_mode INTEGER NOT NULL DEFAULT 0")
+        if "daily_date" not in columns:
+            await db.execute("ALTER TABLE word_games ADD COLUMN daily_date TEXT")
         await db.execute("""
             CREATE TABLE IF NOT EXISTS word_game_scores (
                 user_id INTEGER PRIMARY KEY,
@@ -105,8 +114,8 @@ def help_keyboard():
         [_button("🔙 Words Game", callback_data="wg:home", style="danger")],
     ])
 
-def _game_text(length, guesses, word=None, ended=False, winner=None):
-    lines = [f"🎮 DEEP EMOTIONS · WORDS GAME", f"{length}-letter mode · {len(guesses)}/{MAX_GUESSES} guesses", ""]
+def _game_text(length, guesses, word=None, ended=False, winner=None, max_guesses=MAX_GUESSES):
+    lines = [f"🎮 DEEP EMOTIONS · WORDS GAME", f"{length}-letter mode · {len(guesses)}/{max_guesses} guesses", ""]
     for guess in guesses:
         feedback = _feedback(guess, word) if word else guess.get("feedback", "")
         lines.append(f"{feedback}  {guess['word']}")
@@ -144,7 +153,8 @@ async def _fetch_game(chat_id):
 
 async def _show_game(context, chat_id, row, winner=None, ended=False):
     guesses = json.loads(row["guesses_json"])
-    text = _game_text(row["word_length"], guesses, row["word"], ended=ended, winner=winner)
+    guess_limit = 6 if row["daily_mode"] else MAX_GUESSES
+    text = _game_text(row["word_length"], guesses, row["word"], ended=ended, winner=winner, max_guesses=guess_limit)
     try:
         await context.bot.edit_message_text(
             chat_id=chat_id,
@@ -160,6 +170,131 @@ async def _show_game(context, chat_id, row, winner=None, ended=False):
             text=text,
             reply_markup=footer_keyboard(),
         )
+
+async def _start_word_round(update: Update, context: ContextTypes.DEFAULT_TYPE, length: int, daily: bool = False, daily_date: str = None, fixed_word: str = None):
+    message = update.effective_message
+    chat = update.effective_chat
+    user = update.effective_user
+    if not message or not chat or not user:
+        return
+    if daily and chat.type != "private":
+        await message.reply_text("📅 Daily WordSeek is available only in my private chat. Open @DeepEmotionsBot and use /daily.")
+        return
+    if length not in WORDS:
+        await message.reply_text("Choose a word length: /new4, /new5, or /new6.")
+        return
+    old = await _fetch_game(chat.id)
+    if old and old["active"]:
+        hint = " Use /pausedaily to leave Daily mode." if old["daily_mode"] else " Finish it first with /end."
+        await message.reply_text("⏳ A Words Game round is already active in this chat." + hint)
+        return
+    word = fixed_word or random.choice(WORDS[length])
+    limit = 6 if daily else MAX_GUESSES
+    title = "📅 DAILY WORDSEEK" if daily else "🎮 DEEP EMOTIONS · WORDS GAME"
+    panel = await message.reply_text(
+        f"{title}\n\n{length}-letter mode · 0/{limit} guesses\n\n"
+        f"No guesses yet. Send a {length}-letter word in this chat to begin!\n\n"
+        "🟩 Correct place   🟨 Wrong place   🟥 Not in word",
+        reply_markup=footer_keyboard(),
+    )
+    async with _connect() as db:
+        await db.execute(
+            """INSERT INTO word_games(chat_id, owner_user_id, word, word_length, guesses_json, active, panel_message_id, started_at, daily_mode, daily_date)
+               VALUES(?,?,?,?, '[]', 1, ?, ?, ?, ?)
+               ON CONFLICT(chat_id) DO UPDATE SET owner_user_id=excluded.owner_user_id, word=excluded.word,
+               word_length=excluded.word_length, guesses_json='[]', active=1, panel_message_id=excluded.panel_message_id,
+               started_at=excluded.started_at, daily_mode=excluded.daily_mode, daily_date=excluded.daily_date""",
+            (chat.id, user.id, word, length, panel.message_id, datetime.now(timezone.utc).isoformat(), 1 if daily else 0, daily_date),
+        )
+        await db.commit()
+
+
+async def new_word_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    length = 5
+    if context.args:
+        try:
+            length = int(context.args[0])
+        except ValueError:
+            await update.effective_message.reply_text("Usage: /new or /new 4, /new 5, /new 6")
+            return
+    await _start_word_round(update, context, length)
+
+
+async def new4_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _start_word_round(update, context, 4)
+
+
+async def new5_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _start_word_round(update, context, 5)
+
+
+async def new6_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _start_word_round(update, context, 6)
+
+
+async def end_word_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message, chat, user = update.effective_message, update.effective_chat, update.effective_user
+    if not message or not chat or not user:
+        return
+    row = await _fetch_game(chat.id)
+    if not row or not row["active"]:
+        await message.reply_text("There is no active Words Game round.")
+        return
+    if row["owner_user_id"] != user.id:
+        await message.reply_text("Only the player who started this round can end it.")
+        return
+    async with _connect() as db:
+        await db.execute("UPDATE word_games SET active=0 WHERE chat_id=?", (chat.id,))
+        await db.commit()
+    await message.reply_text("🛑 Words Game round ended.")
+
+
+async def helpwords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.effective_message.reply_text(
+        "📋 WORD GAME COMMANDS\\n\\n"
+        "/new — Start the default 5-letter game\\n"
+        "/new4 — Start a 4-letter game\\n"
+        "/new5 — Start a 5-letter game\\n"
+        "/new6 — Start a 6-letter game\\n"
+        "/end — End the current game when permitted\\n"
+        "/helpwords — Open Word Game help\\n"
+        "/daily — Start Daily WordSeek in a private chat (6 guesses)\\n"
+        "/pausedaily — Leave Daily mode and return to normal games"
+    )
+
+
+async def daily_word_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+    if not chat or chat.type != "private":
+        await update.effective_message.reply_text("📅 Daily WordSeek is available only in my private chat. Open @DeepEmotionsBot and use /daily.")
+        return
+    now = datetime.now(ZoneInfo("Asia/Kathmandu"))
+    puzzle_day = now.date() if now.hour >= 6 else (now.date() - timedelta(days=1))
+    daily_date = puzzle_day.isoformat()
+    chooser = random.Random("Deep-Emotion-WordSeek-" + daily_date)
+    word = chooser.choice(WORDS[5])
+    await _start_word_round(update, context, 5, daily=True, daily_date=daily_date, fixed_word=word)
+
+
+async def pause_daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message, chat, user = update.effective_message, update.effective_chat, update.effective_user
+    if not message or not chat or not user:
+        return
+    if chat.type != "private":
+        await message.reply_text("Use /pausedaily in my private chat.")
+        return
+    row = await _fetch_game(chat.id)
+    if not row or not row["active"] or not row["daily_mode"]:
+        await message.reply_text("Daily WordSeek is not active. You can start a normal game with /new.")
+        return
+    if row["owner_user_id"] != user.id:
+        await message.reply_text("Only the player who started this Daily WordSeek can pause it.")
+        return
+    async with _connect() as db:
+        await db.execute("UPDATE word_games SET active=0 WHERE chat_id=?", (chat.id,))
+        await db.commit()
+    await message.reply_text("⏸️ Daily WordSeek paused. You can now start a normal game with /new.")
+
 
 async def wordgame_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Open the image welcome panel directly with /wordgame."""
@@ -535,9 +670,9 @@ No guesses yet. Send a {length}-letter word in this chat to begin!
         panel_id = query.message.message_id
         async with _connect() as db:
             await db.execute(
-                """INSERT INTO word_games(chat_id, owner_user_id, word, word_length, guesses_json, active, panel_message_id, started_at)
-                   VALUES(?,?,?,?, '[]', 1, ?, ?)
-                   ON CONFLICT(chat_id) DO UPDATE SET owner_user_id=excluded.owner_user_id, word=excluded.word, word_length=excluded.word_length, guesses_json='[]', active=1, panel_message_id=excluded.panel_message_id, started_at=excluded.started_at""",
+                """INSERT INTO word_games(chat_id, owner_user_id, word, word_length, guesses_json, active, panel_message_id, started_at, daily_mode, daily_date)
+                   VALUES(?,?,?,?, '[]', 1, ?, ?, 0, NULL)
+                   ON CONFLICT(chat_id) DO UPDATE SET owner_user_id=excluded.owner_user_id, word=excluded.word, word_length=excluded.word_length, guesses_json='[]', active=1, panel_message_id=excluded.panel_message_id, started_at=excluded.started_at, daily_mode=0, daily_date=NULL""",
                 (chat_id, user.id, word, length, panel_id, datetime.now(timezone.utc).isoformat()),
             )
             await db.commit()
@@ -564,11 +699,12 @@ async def word_guess_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         raise ApplicationHandlerStop
     guesses = json.loads(row["guesses_json"])
-    if len(guesses) >= MAX_GUESSES:
+    guess_limit = 6 if row["daily_mode"] else MAX_GUESSES
+    if len(guesses) >= guess_limit:
         return
     guesses.append({"word": guess, "feedback": _feedback({"word": guess}, row["word"]), "user_id": user.id, "name": user.full_name or user.first_name or "Player"})
     correct = guess == row["word"]
-    ended = correct or len(guesses) >= MAX_GUESSES
+    ended = correct or len(guesses) >= guess_limit
     async with _connect() as db:
         await db.execute(
             "UPDATE word_games SET guesses_json=?, active=? WHERE chat_id=?",
