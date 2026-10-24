@@ -115,7 +115,13 @@ def help_keyboard():
     ])
 
 def _game_text(length, guesses, word=None, ended=False, winner=None, max_guesses=MAX_GUESSES):
-    lines = [f"🎮 DEEP EMOTIONS · WORDS GAME", f"{length}-letter mode · {len(guesses)}/{max_guesses} guesses", ""]
+    # Keep a little breathing room between the header and the guess history.
+    lines = [
+        "🎮 DEEP EMOTIONS · WORDS GAME",
+        f"{length}-letter mode · {len(guesses)}/{max_guesses} guesses",
+        "",
+        "",
+    ]
     for guess in guesses:
         feedback = _feedback(guess, word) if word else guess.get("feedback", "")
         lines.append(f"{feedback}  {guess['word']}")
@@ -124,9 +130,9 @@ def _game_text(length, guesses, word=None, ended=False, winner=None, max_guesses
     if winner:
         lines.extend(["", f"🏆 {winner} guessed the word correctly!", f"Answer: {word}"])
     elif ended:
-        lines.extend(["", f"Round over! The word was: {word}"])
+        lines.extend(["", "🟩 Correct place   🟨 Wrong place   🟥 Not in word", "", f"Round over! The word was: {word}"])
     else:
-        lines.extend(["", "🟩 Correct place   🟨 Wrong place   🟥 Not in word", "Send your guess as a message."])
+        lines.extend(["", "🟩 Correct place   🟨 Wrong place   🟥 Not in word"])
     return "\n".join(lines)
 
 def _feedback(guess, answer):
