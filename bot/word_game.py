@@ -172,10 +172,19 @@ async def wordgame_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def _edit_callback_panel(query, text, reply_markup, parse_mode=None):
-    """Update the existing panel in place to avoid slow delete-then-send calls."""
+    """Edit text panels in place; Telegram photo captions have a 1024-char limit."""
     if query.message and query.message.photo:
-        return await query.edit_message_caption(
-            caption=text,
+        if len(text) <= 1024:
+            return await query.edit_message_caption(
+                caption=text,
+                parse_mode=parse_mode,
+                reply_markup=reply_markup,
+            )
+        # Long help panels cannot fit in a photo caption.
+        await query.message.delete()
+        return await query.get_bot().send_message(
+            chat_id=query.message.chat_id,
+            text=text,
             parse_mode=parse_mode,
             reply_markup=reply_markup,
         )
