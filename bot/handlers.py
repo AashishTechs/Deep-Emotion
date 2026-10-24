@@ -452,11 +452,9 @@ HELP_SECTION_TEXT = {
     ),
     "help_games": (
         "🎮 **Games**\n\n"
-        "/game truth\n"
-        "/game dare\n"
-        "/game wyr\n"
-        "/game joke\n\n"
-        "Group mein social games play kar sakte ho."
+        "💗 Social Games: /game truth, /game dare, /game wyr, /game joke\n\n"
+        "🧩 Words Game: hidden 4-, 5-, ya 6-letter word guess karo. "
+        "Private chat aur groups dono mein playable hai."
     ),
     "help_stats": (
         "📊 **Stats**\n\n"
@@ -497,6 +495,8 @@ def help_section_keyboard(section):
     rows = []
     if section == "help_ai_tools":
         rows.append([_btn("🛠️ ᴏᴘᴇɴ ᴀɪ ᴛᴏᴏʟs", callback_data="ai_tools", style="success")])
+    if section == "help_games":
+        rows.append([_btn("🧩 Words Game", callback_data="wg:home", style="success")])
     rows.append([_btn("🔙 ʙᴀᴄᴋ ᴛᴏ ʜᴇʟᴘ", callback_data="help_main", style="primary")])
     return InlineKeyboardMarkup(rows)
 
