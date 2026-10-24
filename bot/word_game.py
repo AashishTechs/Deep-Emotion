@@ -19,6 +19,9 @@ WORD_GAME_IMAGE_URL = (
     "https://raw.githubusercontent.com/"
     "AashishTechs/Deep-Emotion/main/Welcome2.jpg"
 )
+# Cache Telegram's file_id after the first upload so later panels reuse the
+# already-uploaded photo instead of asking Telegram to fetch the image URL again.
+WORD_GAME_IMAGE_FILE_ID = None
 WELCOME_CAPTION = (
     "Welcome to Word Game!\n\n"
     "A fun and competitive Wordle-style game that you can play directly on Telegram.\n\n"
@@ -158,11 +161,14 @@ async def wordgame_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.effective_message
     if not message:
         return
-    await message.reply_photo(
-        photo=WORD_GAME_IMAGE_URL,
+    global WORD_GAME_IMAGE_FILE_ID
+    sent = await message.reply_photo(
+        photo=WORD_GAME_IMAGE_FILE_ID or WORD_GAME_IMAGE_URL,
         caption=WELCOME_CAPTION,
         reply_markup=game_keyboard(),
     )
+    if WORD_GAME_IMAGE_FILE_ID is None and sent.photo:
+        WORD_GAME_IMAGE_FILE_ID = sent.photo[-1].file_id
 
 
 async def _remove_callback_panel(query):
@@ -174,12 +180,15 @@ async def _remove_callback_panel(query):
 
 
 async def _send_game_home(context, chat_id):
-    await context.bot.send_photo(
+    global WORD_GAME_IMAGE_FILE_ID
+    sent = await context.bot.send_photo(
         chat_id=chat_id,
-        photo=WORD_GAME_IMAGE_URL,
+        photo=WORD_GAME_IMAGE_FILE_ID or WORD_GAME_IMAGE_URL,
         caption=WELCOME_CAPTION,
         reply_markup=game_keyboard(),
     )
+    if WORD_GAME_IMAGE_FILE_ID is None and sent.photo:
+        WORD_GAME_IMAGE_FILE_ID = sent.photo[-1].file_id
 
 
 async def word_game_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
