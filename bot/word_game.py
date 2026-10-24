@@ -29,7 +29,7 @@ WELCOME_CAPTION = (
     "Quick Start:\n"
     "• Use /new to start a new game\n"
     "• Add me to a group with admin permissions to play with friends\n"
-    "• Use /helpwrods for detailed instructions and command list\n\n"
+    "• Use /helpwords for detailed instructions and command list\n\n"
     "Ready to test your word skills? Let's play!"
 )
 MAX_GUESSES = 30
