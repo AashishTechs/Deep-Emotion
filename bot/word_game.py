@@ -232,13 +232,13 @@ You have not played yet. Tap Play to start!"""
             return
         word = random.choice(WORDS[length])
         await query.edit_message_text(
-            f"🎮 DEEP EMOTIONS · WORDS GAME
+            f"""🎮 DEEP EMOTIONS · WORDS GAME
 
 {length}-letter mode · 0/{MAX_GUESSES}
 
 No guesses yet. Send a {length}-letter word in this chat to begin!
 
-🟩 Correct place   🟨 Wrong place   🟥 Not in word",
+🟩 Correct place   🟨 Wrong place   🟥 Not in the word""",
             reply_markup=footer_keyboard(),
         )
         panel_id = query.message.message_id
