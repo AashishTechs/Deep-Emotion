@@ -68,13 +68,18 @@ async def init_word_game_db():
         """)
         await db.commit()
 
-def _button(label, callback_data=None, url=None):
-    return InlineKeyboardButton(label, callback_data=callback_data, url=url)
+def _button(label, callback_data=None, url=None, style=None):
+    return InlineKeyboardButton(
+        label,
+        callback_data=callback_data,
+        url=url,
+        style=style,
+    )
 
 def game_keyboard():
     # Keep the welcome panel buttons: Update, Help, and Discussion.
     return InlineKeyboardMarkup([
-        [_button("🔔 Update", url=UPDATES_URL), _button("Help", callback_data="wg:help"), _button("💬 Discussion", url=DISCUSSION_URL)],
+        [_button("🔔 Update", url=UPDATES_URL, style="success"), _button("Help", callback_data="wg:help", style="danger"), _button("💬 Discussion", url=DISCUSSION_URL, style="primary")],
     ])
 
 
@@ -86,7 +91,7 @@ def mode_keyboard():
 
 def footer_keyboard():
     return InlineKeyboardMarkup([
-        [_button("🔔 Updates", url=UPDATES_URL), _button("Help", callback_data="wg:help"), _button("💬 Discussion", url=DISCUSSION_URL)],
+        [_button("🔔 Updates", url=UPDATES_URL, style="success"), _button("Help", callback_data="wg:help", style="danger"), _button("💬 Discussion", url=DISCUSSION_URL, style="primary")],
         [_button("🏆 Leaderboard", callback_data="wg:leaderboard"), _button("📊 My Stats", callback_data="wg:stats")],
         [_button("🛑 End Round", callback_data="wg:cancel")],
         [_button("🔙 Words Game", callback_data="wg:home")],
