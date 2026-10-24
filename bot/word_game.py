@@ -154,6 +154,20 @@ async def _fetch_game(chat_id):
         return await cur.fetchone()
 
 async def _show_game(context, chat_id, row, winner=None, ended=False):
+    # Accept only meaningful words present in this game's dictionary.
+    # Invalid words must not consume a turn or appear in the game history.
+    if guess not in WORDS[row["word_length"]]:
+        await context.bot.send_message(
+            chat_id=chat.id,
+            text=f"❌ <b>{guess}</b> is not a valid {row['word_length']}-letter word. Try a real word!",
+            parse_mode="HTML",
+        )
+        try:
+            await message.delete()
+        except Exception:
+            pass  # Deletion requires bot permission in groups.
+        raise ApplicationHandlerStop
+
     guesses = json.loads(row["guesses_json"])
     guess_limit = 6 if row["daily_mode"] else MAX_GUESSES
     text = _game_text(row["word_length"], guesses, row["word"], ended=ended, winner=winner, max_guesses=guess_limit)
