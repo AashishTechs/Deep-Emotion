@@ -101,7 +101,7 @@ def help_keyboard():
     return InlineKeyboardMarkup([
         [_button("🎮 How To Play", callback_data="wg:howto"), _button("🏆 Leaderboard", callback_data="wg:leaderboard")],
         [_button("⚙️ Group Settings", callback_data="wg:groupsettings"), _button("📋 Other Commands", callback_data="wg:commands")],
-        [_button("🔔 Update", url=UPDATES_URL), _button("💬 Discussion", url=DISCUSSION_URL)],
+        [_button("🔔 Update", url=UPDATES_URL, style="success"), _button("💬 Discussion", url=DISCUSSION_URL, style="primary")],
         [_button("🔙 Words Game", callback_data="wg:home")],
     ])
 
