@@ -115,18 +115,20 @@ def help_keyboard():
     ])
 
 def _game_text(length, guesses, word=None, ended=False, winner=None, max_guesses=MAX_GUESSES):
-    lines = [f"🎮 DEEP EMOTIONS · WORDS GAME", f"{length}-letter mode · {len(guesses)}/{max_guesses} guesses", ""]
+    # Keep a little breathing room between the header and the guess history.
+    lines = [
+        "🎮 DEEP EMOTIONS · WORDS GAME",
+        f"{length}-letter mode · {len(guesses)}/{max_guesses} guesses",
+        "",
+        "",
+    ]
     for guess in guesses:
         feedback = _feedback(guess, word) if word else guess.get("feedback", "")
         lines.append(f"{feedback}  {guess['word']}")
-    if not guesses:
-        lines.extend(["No guesses yet. Send a word in this chat to begin!", ""])
     if winner:
         lines.extend(["", f"🏆 {winner} guessed the word correctly!", f"Answer: {word}"])
     elif ended:
         lines.extend(["", f"Round over! The word was: {word}"])
-    else:
-        lines.extend(["", "🟩 Correct place   🟨 Wrong place   🟥 Not in word", "Send your guess as a message."])
     return "\n".join(lines)
 
 def _feedback(guess, answer):
@@ -190,9 +192,7 @@ async def _start_word_round(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     limit = 6 if daily else MAX_GUESSES
     title = "📅 DAILY WORDSEEK" if daily else "🎮 DEEP EMOTIONS · WORDS GAME"
     panel = await message.reply_text(
-        f"{title}\n\n{length}-letter mode · 0/{limit} guesses\n\n"
-        f"No guesses yet. Send a {length}-letter word in this chat to begin!\n\n"
-        "🟩 Correct place   🟨 Wrong place   🟥 Not in word",
+        f"{title}\n{length}-letter mode · 0/{limit} guesses\n\n",
     )
     async with _connect() as db:
         await db.execute(
@@ -656,12 +656,9 @@ You have not played yet. Tap Play to start!"""
         word = random.choice(WORDS[length])
         await query.edit_message_text(
             f"""🎮 DEEP EMOTIONS · WORDS GAME
-
 {length}-letter mode · 0/{MAX_GUESSES}
 
-No guesses yet. Send a {length}-letter word in this chat to begin!
-
-🟩 Correct place   🟨 Wrong place   🟥 Not in the word""",
+""",
         )
         panel_id = query.message.message_id
         async with _connect() as db:
