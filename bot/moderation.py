@@ -29,6 +29,7 @@ GROUP_ADMIN_COMMANDS.extend([
     BotCommand("unfilter", "Remove a username sticker"),
     BotCommand("mute", "Mute a member (reply, username or name)"),
     BotCommand("unmute", "Unmute a member (reply, username or name)"),
+    BotCommand("seekauth", "Manage WordSeek authorized users"),
 ])
 
 
