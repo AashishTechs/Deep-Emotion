@@ -583,7 +583,7 @@ async def leaderboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         ])
 
     await message.reply_text(
-        "\\n".join(lines),
+        "\n".join(lines),
         parse_mode="HTML",
         disable_web_page_preview=True,
     )
