@@ -1267,6 +1267,7 @@ async def process_ai(
             ChatAction.TYPING
         )
 
+        generation_started = time.monotonic()
         reply = await generate_reply(
             history=history,
             user_message=text,
@@ -1275,61 +1276,15 @@ async def process_ai(
             is_group=is_group,
             current_user_name=user.first_name or user.full_name,
         )
-
-        # --------------------------------------------------
-        # Save user message
-        # --------------------------------------------------
-
-        await add_message(
+        logger.info(
+            "AI generation completed in %.2fs (chat_id=%s, group=%s)",
+            time.monotonic() - generation_started,
             chat_id,
-            user_id,
-            "user",
-            text,
+            is_group,
         )
 
-        # --------------------------------------------------
-        # Save AI response
-        # --------------------------------------------------
-
-        await add_message(
-            chat_id,
-            user_id,
-            "model",
-            reply,
-        )
-
-        # --------------------------------------------------
-        # Extract personal memories
-        # --------------------------------------------------
-        #
-        # IMPORTANT:
-        # Do NOT create personal memories from group chat.
-        #
-
-        if not is_group:
-
-            new_memories = await extract_memories(
-                text
-            )
-
-            for memory in new_memories:
-
-                saved = await add_memory(
-                    user_id,
-                    memory,
-                )
-
-                if saved:
-
-                    print(
-                        f"New memory saved for "
-                        f"user {user_id}: {memory}"
-                    )
-
-        # --------------------------------------------------
-        # Send reply
-        # --------------------------------------------------
-
+        # Send the answer immediately. Private-chat memory extraction makes
+        # a second Gemini request, so it must not delay the visible reply.
         if context is not None:
             await send_text_with_user_mentions(
                 update,
@@ -1341,14 +1296,44 @@ async def process_ai(
 
     except Exception as exc:
 
-        print(
-            "AI error:",
-            repr(exc),
-        )
-
+        logger.exception("AI generation/send failed: %r", exc)
         await update.message.reply_text(
             "Sorry 💗 abhi AI service se connection "
             "nahi ho pa raha. Thodi der baad try karo."
+        )
+        return
+
+    # Persist history and extract private memories after the user has already
+    # received the response. A storage/memory issue should not hide a valid AI
+    # answer or cause a second, misleading error message.
+    try:
+        await add_message(
+            chat_id,
+            user_id,
+            "user",
+            text,
+        )
+        await add_message(
+            chat_id,
+            user_id,
+            "model",
+            reply,
+        )
+
+        # Personal memories are private-chat only. This is a second Gemini
+        # request, deliberately performed after the reply has been delivered.
+        if not is_group:
+            new_memories = await extract_memories(text)
+            for memory in new_memories:
+                saved = await add_memory(user_id, memory)
+                if saved:
+                    logger.info("New memory saved for user_id=%s", user_id)
+
+    except Exception:
+        logger.exception(
+            "Post-reply history/memory processing failed (chat_id=%s, user_id=%s)",
+            chat_id,
+            user_id,
         )
 
 
