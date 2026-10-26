@@ -375,6 +375,7 @@ async def helpwords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/helpwords — Open Word Game help\\n"
         "/daily — Start Daily WordSeek in a private chat (6 guesses)\\n"
         "/pausedaily — Leave Daily mode and return to normal games"
+        "\\n/seekauth — Group-admin authorization management"
     )
 
 
