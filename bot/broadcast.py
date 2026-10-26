@@ -286,6 +286,7 @@ DEFAULT_COMMANDS = [
     BotCommand("pausedaily", "Pause Daily WordSeek"),
     BotCommand("seekauth", "Manage users allowed to end WordSeek"),
     BotCommand("score", "View a WordSeek player score"),
+    BotCommand("leaderboard", "View the global leaderboard"),
     BotCommand("allowonlylen", "Restrict word lengths in a forum topic"),
     BotCommand("setgametopic", "Allow WordSeek in this forum topic"),
     BotCommand("unsetgametopic", "Remove this topic from allowed topics"),
