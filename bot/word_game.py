@@ -536,6 +536,58 @@ async def score_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def leaderboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show the global all-time Word Game leaderboard, ranked by recorded wins."""
+    message = update.effective_message
+    if not message:
+        return
+
+    async with _connect() as db:
+        cur = await db.execute(
+            """
+            SELECT display_name, wins
+            FROM word_game_scores
+            WHERE wins > 0
+            ORDER BY wins DESC, games DESC, display_name COLLATE NOCASE ASC
+            LIMIT 10
+            """
+        )
+        rows = await cur.fetchall()
+
+    lines = [
+        "🏆 <b>GLOBAL LEADERBOARD</b> 🏆",
+        "━━━━━━━━━━━━━━━━━━",
+        "",
+    ]
+
+    if not rows:
+        lines.extend([
+            "No winners yet!",
+            "🎮 Start a Word Game and be the first champion.",
+        ])
+    else:
+        medals = ("🥇", "🥈", "🥉")
+        for index, (display_name, wins) in enumerate(rows, start=1):
+            safe_name = html.escape(display_name or "Unknown Player")
+            badge = medals[index - 1] if index <= 3 else "🔅"
+            lines.append(
+                f"{badge} <b>{index}.</b> {safe_name} — "
+                f"<code>{wins:,} wins</code>"
+            )
+
+        lines.extend([
+            "",
+            "━━━━━━━━━━━━━━━━━━",
+            "💫 Keep playing to climb the ranks!",
+        ])
+
+    await message.reply_text(
+        "\\n".join(lines),
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+    )
+
+
 async def seekauth_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Let group administrators manage users who may end a Words Game round."""
     message = update.effective_message
