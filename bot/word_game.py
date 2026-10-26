@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 import aiosqlite
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.constants import ChatMemberStatus
 from telegram.ext import ContextTypes, ApplicationHandlerStop
 
 from bot.database import DB_PATH
@@ -66,6 +67,17 @@ async def init_word_game_db():
             await db.execute("ALTER TABLE word_games ADD COLUMN daily_mode INTEGER NOT NULL DEFAULT 0")
         if "daily_date" not in columns:
             await db.execute("ALTER TABLE word_games ADD COLUMN daily_date TEXT")
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS word_game_topic_lengths (
+                chat_id INTEGER NOT NULL,
+                thread_id INTEGER NOT NULL,
+                allowed_lengths_json TEXT NOT NULL,
+                default_length INTEGER NOT NULL,
+                updated_by INTEGER NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (chat_id, thread_id)
+            )
+        """)
         await db.execute("""
             CREATE TABLE IF NOT EXISTS word_game_authorized_users (
                 chat_id INTEGER NOT NULL,
@@ -216,26 +228,117 @@ async def _start_word_round(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         await db.commit()
 
 
+async def _topic_length_settings(chat_id: int, thread_id: int):
+    if thread_id is None:
+        return None
+    async with _connect() as db:
+        cur = await db.execute(
+            "SELECT allowed_lengths_json, default_length FROM word_game_topic_lengths WHERE chat_id=? AND thread_id=?",
+            (chat_id, thread_id),
+        )
+        row = await cur.fetchone()
+    if not row:
+        return None
+    try:
+        allowed = {int(length) for length in json.loads(row[0])}
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+    return {"allowed": allowed, "default": int(row[1])}
+
+
+async def allowonlylen_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message, chat, user = update.effective_message, update.effective_chat, update.effective_user
+    if not message or not chat or not user:
+        return
+    if chat.type not in ("group", "supergroup") or not getattr(chat, "is_forum", False):
+        await message.reply_text("This command can only be used in forum groups.")
+        return
+    thread_id = getattr(message, "message_thread_id", None)
+    if thread_id is None:
+        await message.reply_text("Please run /allowonlylen inside the forum topic you want to configure.")
+        return
+    try:
+        member = await context.bot.get_chat_member(chat.id, user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER, "creator"):
+            await message.reply_text("❌ Only group administrators can change allowed word lengths.")
+            return
+    except Exception:
+        await message.reply_text("❌ I couldn't verify your admin permissions. Please try again.")
+        return
+    args = [arg.strip().lower() for arg in (context.args or [])]
+    if len(args) == 1 and args[0] in ("off", "reset", "clear"):
+        async with _connect() as db:
+            await db.execute("DELETE FROM word_game_topic_lengths WHERE chat_id=? AND thread_id=?", (chat.id, thread_id))
+            await db.commit()
+        await message.reply_text("✅ Word length restriction removed for this topic. All lengths (4, 5, 6) are allowed.")
+        return
+    if not args or any(arg not in ("4", "5", "6") for arg in args):
+        await message.reply_text("Usage: /allowonlylen 4\nor /allowonlylen 5 6\nUse /allowonlylen off to allow all lengths again.\nAllowed lengths: 4, 5, 6.")
+        return
+    lengths = list(dict.fromkeys(int(arg) for arg in args))
+    async with _connect() as db:
+        await db.execute(
+            """INSERT INTO word_game_topic_lengths
+               (chat_id, thread_id, allowed_lengths_json, default_length, updated_by, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?)
+               ON CONFLICT(chat_id, thread_id) DO UPDATE SET
+                 allowed_lengths_json=excluded.allowed_lengths_json,
+                 default_length=excluded.default_length,
+                 updated_by=excluded.updated_by, updated_at=excluded.updated_at""",
+            (chat.id, thread_id, json.dumps(lengths), lengths[0], user.id, datetime.now(timezone.utc).isoformat()),
+        )
+        await db.commit()
+    await message.reply_text(f"✅ Allowed word lengths for this topic: {', '.join(map(str, lengths))}.\nDefault for /new: {lengths[0]}-letter mode.")
+
+
 async def new_word_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message, chat = update.effective_message, update.effective_chat
     length = 5
+    if chat and getattr(chat, 'is_forum', False) and message:
+        settings = await _topic_length_settings(chat.id, getattr(message, 'message_thread_id', None))
+        if settings:
+            length = settings['default']
     if context.args:
         try:
             length = int(context.args[0])
         except ValueError:
             await update.effective_message.reply_text("Usage: /new or /new 4, /new 5, /new 6")
             return
+    if chat and getattr(chat, 'is_forum', False) and message:
+        settings = await _topic_length_settings(chat.id, getattr(message, 'message_thread_id', None))
+        if settings and length not in settings['allowed']:
+            await message.reply_text(f"❌ This topic only allows {', '.join(map(str, sorted(settings['allowed'])))}-letter words.")
+            return
     await _start_word_round(update, context, length)
 
 
 async def new4_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message, chat = update.effective_message, update.effective_chat
+    if chat and getattr(chat, 'is_forum', False) and message:
+        settings = await _topic_length_settings(chat.id, getattr(message, 'message_thread_id', None))
+        if settings and 4 not in settings['allowed']:
+            await message.reply_text(f"❌ This topic only allows {', '.join(map(str, sorted(settings['allowed'])))}-letter words.")
+            return
     await _start_word_round(update, context, 4)
 
 
 async def new5_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message, chat = update.effective_message, update.effective_chat
+    if chat and getattr(chat, 'is_forum', False) and message:
+        settings = await _topic_length_settings(chat.id, getattr(message, 'message_thread_id', None))
+        if settings and 5 not in settings['allowed']:
+            await message.reply_text(f"❌ This topic only allows {', '.join(map(str, sorted(settings['allowed'])))}-letter words.")
+            return
     await _start_word_round(update, context, 5)
 
 
 async def new6_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message, chat = update.effective_message, update.effective_chat
+    if chat and getattr(chat, 'is_forum', False) and message:
+        settings = await _topic_length_settings(chat.id, getattr(message, 'message_thread_id', None))
+        if settings and 6 not in settings['allowed']:
+            await message.reply_text(f"❌ This topic only allows {', '.join(map(str, sorted(settings['allowed'])))}-letter words.")
+            return
     await _start_word_round(update, context, 6)
 
 
