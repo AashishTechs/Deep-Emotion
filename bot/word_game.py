@@ -58,7 +58,8 @@ async def init_word_game_db():
                 panel_message_id INTEGER,
                 started_at TEXT NOT NULL,
                 daily_mode INTEGER NOT NULL DEFAULT 0,
-                daily_date TEXT
+                daily_date TEXT,
+                thread_id INTEGER
             )
         """)
         cur = await db.execute("PRAGMA table_info(word_games)")
@@ -67,6 +68,8 @@ async def init_word_game_db():
             await db.execute("ALTER TABLE word_games ADD COLUMN daily_mode INTEGER NOT NULL DEFAULT 0")
         if "daily_date" not in columns:
             await db.execute("ALTER TABLE word_games ADD COLUMN daily_date TEXT")
+        if "thread_id" not in columns:
+            await db.execute("ALTER TABLE word_games ADD COLUMN thread_id INTEGER")
         await db.execute("""
             CREATE TABLE IF NOT EXISTS word_game_allowed_topics (
                 chat_id INTEGER NOT NULL,
@@ -233,12 +236,13 @@ async def _start_word_round(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     )
     async with _connect() as db:
         await db.execute(
-            """INSERT INTO word_games(chat_id, owner_user_id, word, word_length, guesses_json, active, panel_message_id, started_at, daily_mode, daily_date)
-               VALUES(?,?,?,?, '[]', 1, ?, ?, ?, ?)
+            """INSERT INTO word_games(chat_id, owner_user_id, word, word_length, guesses_json, active, panel_message_id, started_at, daily_mode, daily_date, thread_id)
+               VALUES(?,?,?,?, '[]', 1, ?, ?, ?, ?, ?)
                ON CONFLICT(chat_id) DO UPDATE SET owner_user_id=excluded.owner_user_id, word=excluded.word,
                word_length=excluded.word_length, guesses_json='[]', active=1, panel_message_id=excluded.panel_message_id,
-               started_at=excluded.started_at, daily_mode=excluded.daily_mode, daily_date=excluded.daily_date""",
-            (chat.id, user.id, word, length, panel.message_id, datetime.now(timezone.utc).isoformat(), 1 if daily else 0, daily_date),
+               started_at=excluded.started_at, daily_mode=excluded.daily_mode, daily_date=excluded.daily_date,
+               thread_id=excluded.thread_id""",
+            (chat.id, user.id, word, length, panel.message_id, datetime.now(timezone.utc).isoformat(), 1 if daily else 0, daily_date, getattr(message, "message_thread_id", None)),
         )
         await db.commit()
 
@@ -1064,10 +1068,10 @@ You have not played yet. Tap Play to start!"""
         panel_id = query.message.message_id
         async with _connect() as db:
             await db.execute(
-                """INSERT INTO word_games(chat_id, owner_user_id, word, word_length, guesses_json, active, panel_message_id, started_at, daily_mode, daily_date)
-                   VALUES(?,?,?,?, '[]', 1, ?, ?, 0, NULL)
-                   ON CONFLICT(chat_id) DO UPDATE SET owner_user_id=excluded.owner_user_id, word=excluded.word, word_length=excluded.word_length, guesses_json='[]', active=1, panel_message_id=excluded.panel_message_id, started_at=excluded.started_at, daily_mode=0, daily_date=NULL""",
-                (chat_id, user.id, word, length, panel_id, datetime.now(timezone.utc).isoformat()),
+                """INSERT INTO word_games(chat_id, owner_user_id, word, word_length, guesses_json, active, panel_message_id, started_at, daily_mode, daily_date, thread_id)
+                   VALUES(?,?,?,?, '[]', 1, ?, ?, 0, NULL, ?)
+                   ON CONFLICT(chat_id) DO UPDATE SET owner_user_id=excluded.owner_user_id, word=excluded.word, word_length=excluded.word_length, guesses_json='[]', active=1, panel_message_id=excluded.panel_message_id, started_at=excluded.started_at, daily_mode=0, daily_date=NULL, thread_id=excluded.thread_id""",
+                (chat_id, user.id, word, length, panel_id, datetime.now(timezone.utc).isoformat(), getattr(query.message, "message_thread_id", None)),
             )
             await db.commit()
         return
@@ -1095,6 +1099,8 @@ async def word_guess_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
     row = await _fetch_game(chat.id)
     if not row or not row["active"]:
+        return
+    if chat.type in ("group", "supergroup") and row["thread_id"] != getattr(message, "message_thread_id", None):
         return
     if chat.type == "private" and row["owner_user_id"] != user.id:
         return
