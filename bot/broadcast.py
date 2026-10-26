@@ -284,6 +284,7 @@ DEFAULT_COMMANDS = [
     BotCommand("helpwords", "Word Game help and commands"),
     BotCommand("daily", "Daily WordSeek (private chat)"),
     BotCommand("pausedaily", "Pause Daily WordSeek"),
+    BotCommand("seekauth", "Manage users allowed to end WordSeek"),
     BotCommand("truth", "Truth"),
     BotCommand("dare", "Dare"),
     BotCommand("td", "Truth or Dare"),
