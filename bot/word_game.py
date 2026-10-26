@@ -270,7 +270,7 @@ async def setgametopic_command(update: Update, context: ContextTypes.DEFAULT_TYP
         return
     try:
         member = await context.bot.get_chat_member(chat.id, user.id)
-        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER, "creator"):
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, "creator"):
             await message.reply_text("❌ Only group administrators can configure game topics.")
             return
     except Exception:
@@ -303,7 +303,7 @@ async def unsetgametopic_command(update: Update, context: ContextTypes.DEFAULT_T
         return
     try:
         member = await context.bot.get_chat_member(chat.id, user.id)
-        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER, "creator"):
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, "creator"):
             await message.reply_text("❌ Only group administrators can configure game topics.")
             return
     except Exception:
@@ -354,7 +354,7 @@ async def allowonlylen_command(update: Update, context: ContextTypes.DEFAULT_TYP
         return
     try:
         member = await context.bot.get_chat_member(chat.id, user.id)
-        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER, "creator"):
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, "creator"):
             await message.reply_text("❌ Only group administrators can change allowed word lengths.")
             return
     except Exception:
