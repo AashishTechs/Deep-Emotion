@@ -52,7 +52,7 @@ from bot.command_help import command_help_callback
 from bot.word_game import (
     init_word_game_db, wordgame_command, word_game_callback, word_guess_handler,
     new_word_command, new4_command, new5_command, new6_command,
-    end_word_command, helpwords_command, daily_word_command, pause_daily_command, seekauth_command,
+    end_word_command, helpwords_command, daily_word_command, pause_daily_command, seekauth_command, score_command,
 )
 
 from bot.handlers import (
@@ -136,6 +136,7 @@ async def main():
     application.add_handler(CommandHandler("new6", new6_command))
     application.add_handler(CommandHandler("end", end_word_command))
     application.add_handler(CommandHandler("seekauth", seekauth_command))
+    application.add_handler(CommandHandler("score", score_command))
     application.add_handler(CommandHandler("helpwords", helpwords_command))
     application.add_handler(CommandHandler("daily", daily_word_command))
     application.add_handler(CommandHandler("pausedaily", pause_daily_command))
