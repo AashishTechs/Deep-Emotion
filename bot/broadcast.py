@@ -287,6 +287,8 @@ DEFAULT_COMMANDS = [
     BotCommand("seekauth", "Manage users allowed to end WordSeek"),
     BotCommand("score", "View a WordSeek player score"),
     BotCommand("allowonlylen", "Restrict word lengths in a forum topic"),
+    BotCommand("setgametopic", "Allow WordSeek in this forum topic"),
+    BotCommand("unsetgametopic", "Remove this topic from allowed topics"),
     BotCommand("truth", "Truth"),
     BotCommand("dare", "Dare"),
     BotCommand("td", "Truth or Dare"),
