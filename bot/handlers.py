@@ -998,11 +998,30 @@ async def chat_message(
 
     me = await context.bot.get_me()
 
-    mentioned = (
-        f"@{me.username}".lower() in text.lower()
-        if me.username
-        else False
-    )
+    # Detect this bot's mention using Telegram entities first, with a
+    # case-insensitive text fallback. Telegram may deliver @mentions with
+    # entity metadata, and checking only raw text can be brittle.
+    bot_username = (me.username or "").lstrip("@").casefold()
+    mentioned = False
+
+    if bot_username:
+        for entity in (update.message.entities or []):
+            if entity.type == MessageEntity.MENTION:
+                entity_text = update.message.parse_entity(entity).strip()
+                if entity_text.lstrip("@").casefold() == bot_username:
+                    mentioned = True
+                    break
+            elif entity.type == MessageEntity.TEXT_MENTION:
+                if entity.user and entity.user.id == me.id:
+                    mentioned = True
+                    break
+
+        if not mentioned:
+            mentioned = re.search(
+                rf"(?<![\\w@])@{re.escape(bot_username)}(?![A-Za-z0-9_])",
+                text,
+                flags=re.IGNORECASE,
+            ) is not None
 
     replied_to_bot = (
         update.message.reply_to_message is not None
