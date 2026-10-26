@@ -67,6 +67,16 @@ async def init_word_game_db():
         if "daily_date" not in columns:
             await db.execute("ALTER TABLE word_games ADD COLUMN daily_date TEXT")
         await db.execute("""
+            CREATE TABLE IF NOT EXISTS word_game_authorized_users (
+                chat_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                display_name TEXT NOT NULL,
+                added_by INTEGER NOT NULL,
+                added_at TEXT NOT NULL,
+                PRIMARY KEY (chat_id, user_id)
+            )
+        """)
+        await db.execute("""
             CREATE TABLE IF NOT EXISTS word_game_scores (
                 user_id INTEGER PRIMARY KEY,
                 display_name TEXT NOT NULL,
@@ -237,13 +247,121 @@ async def end_word_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not row or not row["active"]:
         await message.reply_text("There is no active Words Game round.")
         return
+    authorized = False
     if row["owner_user_id"] != user.id:
-        await message.reply_text("Only the player who started this round can end it.")
-        return
+        async with _connect() as db:
+            cur = await db.execute(
+                "SELECT 1 FROM word_game_authorized_users WHERE chat_id=? AND user_id=?",
+                (chat.id, user.id),
+            )
+            authorized = await cur.fetchone() is not None
+        if not authorized:
+            await message.reply_text("Only the player who started this round or a user authorized with /seekauth can end it.")
+            return
     async with _connect() as db:
         await db.execute("UPDATE word_games SET active=0 WHERE chat_id=?", (chat.id,))
         await db.commit()
     await message.reply_text("🛑 Words Game round ended.")
+
+
+async def seekauth_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Let group administrators manage users who may end a Words Game round."""
+    message = update.effective_message
+    chat = update.effective_chat
+    actor = update.effective_user
+    if not message or not chat or not actor:
+        return
+    if chat.type not in ("group", "supergroup"):
+        await message.reply_text("Use /seekauth inside the group where WordSeek is running.")
+        return
+    try:
+        member = await context.bot.get_chat_member(chat.id, actor.id)
+        if member.status not in ("administrator", "creator", "owner"):
+            await message.reply_text(
+                "❌ You don't have permission to use this command. Only administrators can manage authorized users."
+            )
+            return
+    except Exception:
+        await message.reply_text("⚠️ I couldn't verify your admin permissions. Please try again.")
+        return
+
+    args = list(context.args or [])
+    action = args[0].lower() if args else "help"
+    if action in ("list", "show"):
+        async with _connect() as db:
+            cur = await db.execute(
+                "SELECT user_id, display_name FROM word_game_authorized_users WHERE chat_id=? ORDER BY display_name COLLATE NOCASE",
+                (chat.id,),
+            )
+            rows = await cur.fetchall()
+        if not rows:
+            await message.reply_text("🔐 No users are authorized to end WordSeek rounds in this group.")
+            return
+        lines = ["🔐 <b>Authorized WordSeek Users</b>", ""]
+        lines.extend(f"• {display_name} — <code>{user_id}</code>" for user_id, display_name in rows)
+        await message.reply_text("\n".join(lines), parse_mode="HTML")
+        return
+
+    if action in ("help",):
+        await message.reply_text(
+            "🔐 <b>WordSeek Authorization</b>\n\n"
+            "<code>/seekauth reply</code> — authorize the replied-to user\n"
+            "<code>/seekauth USER_ID</code> — authorize by Telegram user ID\n"
+            "<code>/seekauth remove USER_ID</code> — remove authorization\n"
+            "<code>/seekauth list</code> — list authorized users\n\n"
+            "Only group administrators can manage this list.",
+            parse_mode="HTML",
+        )
+        return
+
+    remove = action in ("remove", "del", "delete", "revoke")
+    target_id = None
+    display_name = None
+    if message.reply_to_message and message.reply_to_message.from_user and (remove and len(args) == 1 or not remove and len(args) == 1):
+        target = message.reply_to_message.from_user
+        target_id = target.id
+        display_name = target.full_name or target.first_name or str(target.id)
+    else:
+        raw_target = args[1] if remove and len(args) > 1 else (args[0] if not remove else "")
+        if raw_target.isdigit():
+            target_id = int(raw_target)
+            display_name = f"User {target_id}"
+        elif raw_target.startswith("@"):
+            cache = context.application.bot_data.get("moderation_members", {}).get(chat.id, {})
+            matches = [v for v in cache.values() if (v.get("username") or "").casefold() == raw_target[1:].casefold()]
+            if len(matches) == 1:
+                target_id = int(matches[0]["id"])
+                display_name = matches[0].get("full_name") or matches[0].get("name") or raw_target
+    if target_id is None:
+        await message.reply_text(
+            "Usage:\n• Reply to a user's message: /seekauth\n"
+            "• Authorize by ID: /seekauth USER_ID\n"
+            "• Remove by ID: /seekauth remove USER_ID\n"
+            "• List: /seekauth list\n\n"
+            "For @username, the user must have sent a message in this group while I was online."
+        )
+        return
+    async with _connect() as db:
+        if remove:
+            cur = await db.execute(
+                "DELETE FROM word_game_authorized_users WHERE chat_id=? AND user_id=?",
+                (chat.id, target_id),
+            )
+            await db.commit()
+            if cur.rowcount:
+                await message.reply_text(f"✅ Authorization removed for {display_name} (<code>{target_id}</code>).", parse_mode="HTML")
+            else:
+                await message.reply_text("ℹ️ That user was not on this group's authorization list.")
+        else:
+            await db.execute(
+                """INSERT INTO word_game_authorized_users(chat_id, user_id, display_name, added_by, added_at)
+                   VALUES(?,?,?,?,?)
+                   ON CONFLICT(chat_id, user_id) DO UPDATE SET
+                     display_name=excluded.display_name, added_by=excluded.added_by, added_at=excluded.added_at""",
+                (chat.id, target_id, display_name, actor.id, datetime.now(timezone.utc).isoformat()),
+            )
+            await db.commit()
+            await message.reply_text(f"✅ {display_name} (<code>{target_id}</code>) can now end WordSeek rounds in this group.", parse_mode="HTML")
 
 
 async def helpwords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
