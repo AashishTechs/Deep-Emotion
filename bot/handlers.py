@@ -972,6 +972,13 @@ async def chat_message(
         return
 
     text = update.message.text.strip()
+    logger.info(
+        "Group/chat message received: chat_id=%s user_id=%s type=%s message_id=%s",
+        update.effective_chat.id if update.effective_chat else None,
+        update.effective_user.id if update.effective_user else None,
+        update.effective_chat.type if update.effective_chat else None,
+        update.message.message_id,
+    )
 
     if not text:
         return
@@ -1063,9 +1070,17 @@ async def chat_message(
 
     # ------------------------------------------------------
     # Smart group mode
-
     # ------------------------------------------------------
     if chat.type != "private":
+        logger.info(
+            "Group mention decision: chat_id=%s message_id=%s mentioned=%s replied_to_bot=%s other_user_mentioned=%s entities=%s",
+            chat.id,
+            update.message.message_id,
+            mentioned,
+            replied_to_bot,
+            other_user_mentioned,
+            [entity.type for entity in (update.message.entities or [])],
+        )
         if not should_reply_group(
             chat.id,
             text,
@@ -1073,8 +1088,18 @@ async def chat_message(
             replied_to_bot=replied_to_bot,
             other_user_mentioned=other_user_mentioned,
         ):
+            logger.info(
+                "Group message ignored: chat_id=%s message_id=%s reason=bot_mention_not_detected",
+                chat.id,
+                update.message.message_id,
+            )
             return
 
+        logger.info(
+            "Group AI processing started: chat_id=%s message_id=%s",
+            chat.id,
+            update.message.message_id,
+        )
         mark_group_reply(chat.id)
 
     # ------------------------------------------------------
@@ -1201,6 +1226,12 @@ async def process_ai(
         not allowed(user.id)
         and user.id != OWNER_ID
     ):
+        logger.warning(
+            "AI request rate-limited: chat_id=%s user_id=%s message_id=%s",
+            update.effective_chat.id if update.effective_chat else None,
+            user.id,
+            update.message.message_id,
+        )
 
         await update.message.reply_text(
             "⏳ Thoda slow... "
@@ -1213,6 +1244,12 @@ async def process_ai(
 
     chat_id = chat.id
     user_id = user.id
+    logger.info(
+        "AI request accepted: chat_id=%s user_id=%s message_id=%s",
+        chat_id,
+        user_id,
+        update.message.message_id,
+    )
 
     is_group = (
         chat.type in (
