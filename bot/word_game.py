@@ -705,8 +705,7 @@ async def word_guess_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             chat_id=chat.id,
             text=(
                 f"❌ <b>Invalid Word!</b>\n\n"
-                f"<code>{guess}</code> is not a valid {row['word_length']}-letter word. 💗\n\n"
-                "Please enter a valid English word and try again!"
+                f"<code>{guess}</code> is not a valid {row['word_length']}-letter word. 💗"
             ),
             parse_mode="HTML",
         )
