@@ -1222,27 +1222,25 @@ async def process_ai(
     )
 
     # ------------------------------------------------------
-    # History
+    # Load a smaller context in groups to reduce prompt size
+    # and improve response latency. Private chats retain more history.
     # ------------------------------------------------------
 
     history = await get_history(
         chat_id,
         user_id,
+        limit=5 if is_group else 10,
     )
 
     # ------------------------------------------------------
     # Personal memories
     # ------------------------------------------------------
-    #
-    # IMPORTANT:
-    # Private → allowed
-    # Group   → blocked
-    #
+    # Personal memories remain private-chat only.
+    # ------------------------------------------------------
 
     memories = []
 
     if not is_group:
-
         memories = await get_memories(
             user_id,
             limit=10,
@@ -1255,10 +1253,9 @@ async def process_ai(
     group_context = []
 
     if is_group:
-
         group_context = await get_group_context(
             chat_id,
-            limit=15,
+            limit=6,
         )
 
     try:
