@@ -3,6 +3,7 @@
 # Wordle-style game for private chats and groups.
 # ==========================================================
 
+import html
 import json
 import random
 from datetime import datetime, timezone, timedelta
