@@ -265,9 +265,11 @@ async def setgametopic_command(update: Update, context: ContextTypes.DEFAULT_TYP
     message, chat, user = update.effective_message, update.effective_chat, update.effective_user
     if not message or not chat or not user:
         return
-    if chat.type not in ("group", "supergroup") or not getattr(chat, "is_forum", False):
-        await message.reply_text("This command can only be used in forum groups.")
+    if chat.type not in ("group", "supergroup"):
+        await message.reply_text("This command must be used inside a group forum topic.")
         return
+    # Telegram's is_forum flag may be missing on some message/chat objects.
+    # A message_thread_id is the reliable signal that this command came from a topic.
     thread_id = getattr(message, "message_thread_id", None)
     if thread_id is None:
         await message.reply_text("Please run /setgametopic inside the forum topic you want to allow for WordSeek.")
@@ -298,9 +300,10 @@ async def unsetgametopic_command(update: Update, context: ContextTypes.DEFAULT_T
     message, chat, user = update.effective_message, update.effective_chat, update.effective_user
     if not message or not chat or not user:
         return
-    if chat.type not in ("group", "supergroup") or not getattr(chat, "is_forum", False):
-        await message.reply_text("This command can only be used in forum groups.")
+    if chat.type not in ("group", "supergroup"):
+        await message.reply_text("This command must be used inside a group forum topic.")
         return
+    # Use the topic ID instead of relying on the optional is_forum flag.
     thread_id = getattr(message, "message_thread_id", None)
     if thread_id is None:
         await message.reply_text("Please run /unsetgametopic inside the forum topic you want to remove.")
