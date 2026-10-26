@@ -637,18 +637,37 @@ async def seekauth_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def helpwords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.effective_message.reply_text(
-        "📋 WORD GAME COMMANDS\\n\\n"
-        "/new — Start the default 5-letter game\\n"
-        "/new4 — Start a 4-letter game\\n"
-        "/new5 — Start a 5-letter game\\n"
-        "/new6 — Start a 6-letter game\\n"
-        "/end — End the current game when permitted\\n"
-        "/helpwords — Open Word Game help\\n"
-        "/daily — Start Daily WordSeek in a private chat (6 guesses)\\n"
-        "/pausedaily — Leave Daily mode and return to normal games"
-        "\\n/seekauth — Group-admin authorization management"\n        "\\n/score [@username or user_id] — View a player score"
+    message = update.effective_message
+    if not message:
+        return
+    help_text = (
+        "📋 WORDSEEK — COMMAND GUIDE\n\n"
+        "🎮 START A GAME\n"
+        "/new — Start a 5-letter game (default)\n"
+        "/new 4 — Start a game with 4, 5, or 6 letters\n"
+        "/new4 — Start a 4-letter game\n"
+        "/new5 — Start a 5-letter game\n"
+        "/new6 — Start a 6-letter game\n\n"
+        "🕹️ PLAYING\n"
+        "Send a word with the same number of letters as the game.\n"
+        "🟩 Correct letter and position · 🟨 Letter is in the word, wrong position · 🟥 Letter is not in the word\n"
+        "Normal games allow up to 30 guesses.\n"
+        "/end — End the current round (the starter or an authorized user)\n\n"
+        "📅 DAILY WORDSEEK (PRIVATE CHAT)\n"
+        "/daily — Start today's fixed 5-letter puzzle (6 guesses)\n"
+        "/pausedaily — Pause Daily mode and return to normal games\n"
+        "Daily puzzles refresh at 06:00 Kathmandu time.\n\n"
+        "📊 SCORES & GROUP SETTINGS\n"
+        "/score — View your score\n"
+        "/score @username or /score USER_ID — View another player's score\n"
+        "/seekauth — Group admins: manage users allowed to end rounds\n"
+        "/allowonlylen — Group admins: restrict word lengths in a forum topic\n"
+        "/setgametopic — Group admins: allow WordSeek in this forum topic\n"
+        "/unsetgametopic — Group admins: remove this topic from the allowed list\n\n"
+        "ℹ️ Use these topic settings inside a Telegram Forum Group topic. "
+        "Tap the game's Help button for more instructions."
     )
+    await message.reply_text(help_text)
 
 
 async def daily_word_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
