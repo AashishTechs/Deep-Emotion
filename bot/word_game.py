@@ -677,6 +677,18 @@ async def word_guess_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user = update.effective_user
     if not message or not chat or not user or not message.text or user.is_bot:
         return
+
+    # Remove the previous invalid-word notice when a new text message arrives.
+    previous_notice_id = context.chat_data.pop("word_game_invalid_notice_id", None)
+    if previous_notice_id:
+        try:
+            await context.bot.delete_message(
+                chat_id=chat.id,
+                message_id=previous_notice_id,
+            )
+        except Exception:
+            pass  # The notice may already have been deleted.
+
     guess = message.text.strip().upper()
     if not guess.isalpha() or len(guess) not in (4, 5, 6):
         return
@@ -701,11 +713,12 @@ async def word_guess_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Accept only meaningful words present in this game's dictionary.
     # Invalid words must not consume a turn or appear in the game history.
     if guess not in WORDS[row["word_length"]]:
-        await context.bot.send_message(
+        notice = await context.bot.send_message(
             chat_id=chat.id,
             text=f"<code>{guess}</code> is not a valid {row['word_length']}-letter word. 💗",
             parse_mode="HTML",
         )
+        context.chat_data["word_game_invalid_notice_id"] = notice.message_id
         try:
             await message.delete()
         except Exception:
