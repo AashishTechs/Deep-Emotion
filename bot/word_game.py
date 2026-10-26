@@ -68,6 +68,16 @@ async def init_word_game_db():
         if "daily_date" not in columns:
             await db.execute("ALTER TABLE word_games ADD COLUMN daily_date TEXT")
         await db.execute("""
+            CREATE TABLE IF NOT EXISTS word_game_allowed_topics (
+                chat_id INTEGER NOT NULL,
+                thread_id INTEGER NOT NULL,
+                topic_name TEXT NOT NULL DEFAULT '',
+                updated_by INTEGER NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (chat_id, thread_id)
+            )
+        """)
+        await db.execute("""
             CREATE TABLE IF NOT EXISTS word_game_topic_lengths (
                 chat_id INTEGER NOT NULL,
                 thread_id INTEGER NOT NULL,
@@ -205,6 +215,11 @@ async def _start_word_round(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     if length not in WORDS:
         await message.reply_text("Choose a word length: /new4, /new5, or /new6.")
         return
+    if chat.type in ("group", "supergroup"):
+        thread_id = getattr(message, "message_thread_id", None)
+        if not await _topic_is_allowed(chat.id, thread_id):
+            await message.reply_text("❌ WordSeek is restricted to the configured forum topic(s). Start the game in an allowed topic.")
+            return
     old = await _fetch_game(chat.id)
     if old and old["active"]:
         hint = " Use /pausedaily to leave Daily mode." if old["daily_mode"] else " Finish it first with /end."
@@ -226,6 +241,86 @@ async def _start_word_round(update: Update, context: ContextTypes.DEFAULT_TYPE, 
             (chat.id, user.id, word, length, panel.message_id, datetime.now(timezone.utc).isoformat(), 1 if daily else 0, daily_date),
         )
         await db.commit()
+
+
+async def _topic_is_allowed(chat_id: int, thread_id):
+    async with _connect() as db:
+        cur = await db.execute(
+            "SELECT thread_id FROM word_game_allowed_topics WHERE chat_id=?",
+            (chat_id,),
+        )
+        rows = await cur.fetchall()
+    if not rows:
+        return True
+    if thread_id is None:
+        return False
+    return any(int(row[0]) == int(thread_id) for row in rows)
+
+
+async def setgametopic_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message, chat, user = update.effective_message, update.effective_chat, update.effective_user
+    if not message or not chat or not user:
+        return
+    if chat.type not in ("group", "supergroup") or not getattr(chat, "is_forum", False):
+        await message.reply_text("This command can only be used in forum groups.")
+        return
+    thread_id = getattr(message, "message_thread_id", None)
+    if thread_id is None:
+        await message.reply_text("Please run /setgametopic inside the forum topic you want to allow for WordSeek.")
+        return
+    try:
+        member = await context.bot.get_chat_member(chat.id, user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER, "creator"):
+            await message.reply_text("❌ Only group administrators can configure game topics.")
+            return
+    except Exception:
+        await message.reply_text("❌ I couldn't verify your admin permissions. Please try again.")
+        return
+    async with _connect() as db:
+        await db.execute(
+            """INSERT INTO word_game_allowed_topics (chat_id, thread_id, topic_name, updated_by, updated_at)
+               VALUES (?, ?, '', ?, ?)
+               ON CONFLICT(chat_id, thread_id) DO UPDATE SET
+                 updated_by=excluded.updated_by, updated_at=excluded.updated_at""",
+            (chat.id, thread_id, user.id, datetime.now(timezone.utc).isoformat()),
+        )
+        cur = await db.execute("SELECT COUNT(*) FROM word_game_allowed_topics WHERE chat_id=?", (chat.id,))
+        count = (await cur.fetchone())[0]
+        await db.commit()
+    await message.reply_text(f"✅ This topic is now allowed for WordSeek games.\nAllowed topics configured: {count}.")
+
+
+async def unsetgametopic_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message, chat, user = update.effective_message, update.effective_chat, update.effective_user
+    if not message or not chat or not user:
+        return
+    if chat.type not in ("group", "supergroup") or not getattr(chat, "is_forum", False):
+        await message.reply_text("This command can only be used in forum groups.")
+        return
+    thread_id = getattr(message, "message_thread_id", None)
+    if thread_id is None:
+        await message.reply_text("Please run /unsetgametopic inside the forum topic you want to remove.")
+        return
+    try:
+        member = await context.bot.get_chat_member(chat.id, user.id)
+        if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER, "creator"):
+            await message.reply_text("❌ Only group administrators can configure game topics.")
+            return
+    except Exception:
+        await message.reply_text("❌ I couldn't verify your admin permissions. Please try again.")
+        return
+    async with _connect() as db:
+        await db.execute(
+            "DELETE FROM word_game_allowed_topics WHERE chat_id=? AND thread_id=?",
+            (chat.id, thread_id),
+        )
+        cur = await db.execute("SELECT COUNT(*) FROM word_game_allowed_topics WHERE chat_id=?", (chat.id,))
+        count = (await cur.fetchone())[0]
+        await db.commit()
+    if count:
+        await message.reply_text(f"✅ This topic has been removed from allowed WordSeek topics. Games are limited to the {count} remaining configured topic(s).")
+    else:
+        await message.reply_text("✅ No topic restriction remains. WordSeek can run in any topic in this forum group.")
 
 
 async def _topic_length_settings(chat_id: int, thread_id: int):
@@ -935,6 +1030,10 @@ You have not played yet. Tap Play to start!"""
         if length not in WORDS:
             return
         topic_message = query.message
+        if topic_message and topic_message.chat.type in ("group", "supergroup"):
+            if not await _topic_is_allowed(topic_message.chat.id, getattr(topic_message, "message_thread_id", None)):
+                await query.answer("WordSeek is restricted to configured forum topic(s).", show_alert=True)
+                return
         topic_chat = topic_message.chat if topic_message else None
         if topic_chat and getattr(topic_chat, "is_forum", False):
             settings = await _topic_length_settings(
