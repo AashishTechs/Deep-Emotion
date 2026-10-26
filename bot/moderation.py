@@ -32,6 +32,8 @@ GROUP_ADMIN_COMMANDS.extend([
     BotCommand("seekauth", "Manage WordSeek authorized users"),
     BotCommand("score", "View a WordSeek player score"),
     BotCommand("allowonlylen", "Restrict word lengths in a forum topic"),
+    BotCommand("setgametopic", "Allow WordSeek in this forum topic"),
+    BotCommand("unsetgametopic", "Remove this topic from allowed topics"),
 ])
 
 
