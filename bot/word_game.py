@@ -934,6 +934,19 @@ You have not played yet. Tap Play to start!"""
             return
         if length not in WORDS:
             return
+        topic_message = query.message
+        topic_chat = topic_message.chat if topic_message else None
+        if topic_chat and getattr(topic_chat, "is_forum", False):
+            settings = await _topic_length_settings(
+                topic_chat.id,
+                getattr(topic_message, "message_thread_id", None),
+            )
+            if settings and length not in settings["allowed"]:
+                await query.answer(
+                    f"Only {', '.join(map(str, sorted(settings['allowed'])))}-letter words are allowed in this topic.",
+                    show_alert=True,
+                )
+                return
         old = await _fetch_game(chat_id)
         if old and old["active"]:
             await context.bot.send_message(
