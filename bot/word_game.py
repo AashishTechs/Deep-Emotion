@@ -305,7 +305,7 @@ async def seekauth_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if action in ("help",):
         await message.reply_text(
             "🔐 <b>WordSeek Authorization</b>\n\n"
-            "<code>/seekauth reply</code> — authorize the replied-to user\n"
+            "Reply to a user and send <code>/seekauth</code> — authorize them\n"
             "<code>/seekauth USER_ID</code> — authorize by Telegram user ID\n"
             "<code>/seekauth remove USER_ID</code> — remove authorization\n"
             "<code>/seekauth list</code> — list authorized users\n\n"
