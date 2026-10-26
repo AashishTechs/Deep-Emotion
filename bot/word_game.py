@@ -264,6 +264,73 @@ async def end_word_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await message.reply_text("🛑 Words Game round ended.")
 
 
+async def score_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show a player's persistent WordSeek score."""
+    message = update.effective_message
+    user = update.effective_user
+    if not message or not user:
+        return
+
+    target_id = user.id
+    target_name = user.full_name or user.first_name or str(user.id)
+    if context.args:
+        target = context.args[0].strip()
+        if target.isdigit():
+            target_id = int(target)
+            target_name = target
+        elif target.startswith("@") and len(target) > 1:
+            username = target[1:].casefold()
+            cache = context.application.bot_data.get("moderation_members", {})
+            match = next(
+                (
+                    member
+                    for group_members in cache.values()
+                    for member in group_members.values()
+                    if (member.get("username") or "").casefold() == username
+                ),
+                None,
+            )
+            if not match:
+                await message.reply_text(
+                    "❌ I couldn't find that username in the groups I've seen. "
+                    "Ask the user to send a message in a group where I'm present, then try again."
+                )
+                return
+            target_id = int(match["id"])
+            target_name = match.get("full_name") or target
+        else:
+            await message.reply_text(
+                "Usage: /score [@username or user_id]"
+            )
+            return
+
+    async with _connect() as db:
+        cur = await db.execute(
+            "SELECT display_name, wins, games, total_guesses "
+            "FROM word_game_scores WHERE user_id=?",
+            (target_id,),
+        )
+        row = await cur.fetchone()
+
+    if not row:
+        await message.reply_text(
+            "You have no scores recorded yet. Start playing to earn some points! 🎮"
+        )
+        return
+
+    target_name, wins, games, total_guesses = row
+    win_rate = round((wins / games) * 100) if games else 0
+    await message.reply_text(
+        f"📊 WORDSEEK SCORE\n\n"
+        f"👤 Player: {target_name}\n"
+        f"🆔 User ID: {target_id}\n"
+        f"🏆 Wins: {wins}\n"
+        f"🎮 Rounds played: {games}\n"
+        f"🎯 Total guesses: {total_guesses}\n"
+        f"📈 Win rate: {win_rate}%"
+    )
+
+
 async def seekauth_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Let group administrators manage users who may end a Words Game round."""
     message = update.effective_message
@@ -375,7 +442,7 @@ async def helpwords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/helpwords — Open Word Game help\\n"
         "/daily — Start Daily WordSeek in a private chat (6 guesses)\\n"
         "/pausedaily — Leave Daily mode and return to normal games"
-        "\\n/seekauth — Group-admin authorization management"
+        "\\n/seekauth — Group-admin authorization management"\n        "\\n/score [@username or user_id] — View a player score"
     )
 
 
