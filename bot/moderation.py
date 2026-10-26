@@ -31,6 +31,7 @@ GROUP_ADMIN_COMMANDS.extend([
     BotCommand("unmute", "Unmute a member (reply, username or name)"),
     BotCommand("seekauth", "Manage WordSeek authorized users"),
     BotCommand("score", "View a WordSeek player score"),
+    BotCommand("allowonlylen", "Restrict word lengths in a forum topic"),
 ])
 
 
