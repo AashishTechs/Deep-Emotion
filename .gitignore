@@ -3,3 +3,5 @@
 __pycache__/
 *.pyc
 data/*.db
+# Persistent AI response cache (generated at runtime)
+bot/response_cache.sqlite3
