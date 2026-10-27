@@ -117,7 +117,7 @@ async def generate_reply(
 
     # Shared cache is only used for generic messages with no user-specific
     # memory, history, group context, or supplied identity.
-    cache_allowed = not memories and not group_context and not current_user_name
+    cache_allowed = not memories and not group_context and not current_user_name and not history
     if cache_allowed:
         cached_reply = await asyncio.to_thread(get_cached_response, user_message)
         if cached_reply:
