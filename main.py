@@ -41,6 +41,7 @@ from bot.moderation import (
     cache_group_member,
     configure_moderation_command_menus,
 )
+from bot.utag import utag_command, cancel_utag_command
 
 from bot.sticker_filters import (
     filter_command,
@@ -144,6 +145,8 @@ async def main():
     application.add_handler(CommandHandler("helpwords", helpwords_command))
     application.add_handler(CommandHandler("daily", daily_word_command))
     application.add_handler(CommandHandler("pausedaily", pause_daily_command))
+    application.add_handler(CommandHandler("utag", utag_command))
+    application.add_handler(CommandHandler("cancel", cancel_utag_command))
     application.add_handler(CommandHandler("truth", truth_command))
     application.add_handler(CommandHandler("dare", dare_command))
     application.add_handler(CommandHandler("td", truth_dare_command))
@@ -183,7 +186,7 @@ async def main():
     )
 
     # Cache group members as soon as they send messages. This lets moderation
-    # commands resolve both @username and display name without an API search.
+    # commands and /utag resolve members without an API search.
     application.add_handler(
         MessageHandler(filters.ChatType.GROUPS, cache_group_member),
         group=-3,
