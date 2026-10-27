@@ -18,9 +18,7 @@ from bot.response_cache import get_cached_response, save_cached_response
 # GEMINI CLIENT
 # ==========================================================
 
-client = genai.Client(
-    api_key=GEMINI_API_KEY
-)
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 
 # ==========================================================
@@ -654,21 +652,15 @@ User input:
 {text}
 """
 
-    response = await asyncio.to_thread(
-        client.models.generate_content,
-        model=GEMINI_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
+    try:
+        return await generate_text(
+            prompt=prompt,
             system_instruction=SYSTEM_PROMPT,
             temperature=0.7,
-        ),
-    )
-
-    return (
-        response.text.strip()
-        if response.text
-        else "Sorry, I couldn't process that."
-    )
+        )
+    except Exception as exc:
+        print(f"[AI TOOL] All providers failed: {exc}")
+        return "Sorry, AI is temporarily unavailable. Please try again shortly."
 
 
 # ==========================================================
