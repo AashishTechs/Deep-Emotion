@@ -3,86 +3,39 @@
 # ==========================================================
 
 import os
-
 from dotenv import load_dotenv
-
-
-# ==========================================================
-# LOAD ENVIRONMENT VARIABLES
-# ==========================================================
 
 load_dotenv()
 
+BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 
-# ==========================================================
-# TELEGRAM BOT
-# ==========================================================
+# AI providers (all optional individually; at least one must be configured).
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite").strip()
 
-BOT_TOKEN = os.getenv(
-    "BOT_TOKEN",
-    "",
-).strip()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
 
+CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY", "").strip()
+CEREBRAS_MODEL = os.getenv("CEREBRAS_MODEL", "llama-3.3-70b").strip()
 
-# ==========================================================
-# GEMINI AI
-# ==========================================================
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free").strip()
 
-GEMINI_API_KEY = os.getenv(
-    "GEMINI_API_KEY",
-    "",
-).strip()
-
-GEMINI_MODEL = os.getenv(
-    "GEMINI_MODEL",
-    "gemini-3.5-flash-lite",
-).strip()
-
-
-# ==========================================================
-# OWNER
-# ==========================================================
-
-try:
-
-    OWNER_ID = int(
-        os.getenv(
-            "OWNER_ID",
-            "0",
-        )
-        or 0
-    )
-
-except ValueError:
-
-    OWNER_ID = 0
-
-
-# ==========================================================
-# VALIDATION
-# ==========================================================
+OWNER_ID = int(os.getenv("OWNER_ID", "0") or 0)
 
 if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN missing. Put BOT_TOKEN in your .env file.")
 
+if not any((GROQ_API_KEY, GEMINI_API_KEY, CEREBRAS_API_KEY, OPENROUTER_API_KEY)):
     raise RuntimeError(
-        "BOT_TOKEN missing. "
-        "Put BOT_TOKEN in your .env file."
+        "No AI provider key configured. Add at least one of GROQ_API_KEY, "
+        "GEMINI_API_KEY, CEREBRAS_API_KEY, OPENROUTER_API_KEY to .env."
     )
 
-
-if not GEMINI_API_KEY:
-
-    raise RuntimeError(
-        "GEMINI_API_KEY missing. "
-        "Put GEMINI_API_KEY in your .env file."
-    )
-
-
-# ==========================================================
-# CONFIG SUMMARY
-# ==========================================================
-
-print(
-    f"Deep Emotions config loaded | "
-    f"Model: {GEMINI_MODEL}"
-)
+print("Deep Emotions config loaded | AI providers: " + ", ".join(
+    name for name, key in (
+        ("Groq", GROQ_API_KEY), ("Gemini", GEMINI_API_KEY),
+        ("Cerebras", CEREBRAS_API_KEY), ("OpenRouter", OPENROUTER_API_KEY)
+    ) if key
+))
