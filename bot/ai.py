@@ -115,8 +115,8 @@ async def generate_reply(
     memories = memories or []
     group_context = group_context or []
 
-    # Shared cache is only used for generic messages with no user-specific
-    # memory, history, group context, or supplied identity.
+    # Cache hits are allowed only without personal memory, group context,
+    # or a supplied identity. New replies are stored only when history is empty.
     cache_lookup_allowed = not memories and not group_context and not current_user_name
     cache_save_allowed = cache_lookup_allowed and not history
     if cache_lookup_allowed:
