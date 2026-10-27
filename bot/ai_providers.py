@@ -74,6 +74,7 @@ def _request_openai_compatible(provider, prompt, system_instruction, temperature
             {"role": "user", "content": prompt},
         ],
         "temperature": temperature,
+        "max_tokens": 100,
     }
     headers = {
         "Authorization": f"Bearer {settings['key']}",
@@ -90,7 +91,7 @@ def _request_openai_compatible(provider, prompt, system_instruction, temperature
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=45) as response:
+        with urllib.request.urlopen(request, timeout=15) as response:
             data = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:500]
@@ -110,6 +111,7 @@ def _generate_sync(provider, prompt, system_instruction, temperature):
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 temperature=temperature,
+                max_output_tokens=100,
             ),
         )
         return (response.text or "").strip()
