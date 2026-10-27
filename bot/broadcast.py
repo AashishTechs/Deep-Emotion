@@ -45,9 +45,6 @@ async def init_broadcast_table():
             """
         )
 
-        # Existing installations may have an older broadcast_groups table
-        # containing only chat_id/added_at. Migrate it in-place so existing
-        # registered groups are preserved instead of deleting the database.
         cursor = await db.execute("PRAGMA table_info(broadcast_groups)")
         columns = {row[1] for row in await cursor.fetchall()}
         if "title" not in columns:
@@ -88,20 +85,13 @@ async def get_broadcast_targets():
         return await cursor.fetchall()
 
 
-async def groups_command(
-    update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
+async def groups_command(update, context: ContextTypes.DEFAULT_TYPE):
     """Show the premium registered-groups panel only to approved users in private chat."""
     if not update.message or not update.effective_user or not update.effective_chat:
         return
-
-    # Only the owner and trusted Telegram ID may use this command, and only in DM.
     if update.effective_chat.type != "private":
         return
-
     if update.effective_user.id not in BROADCAST_ADMIN_IDS:
-        # Do not reveal or promote this admin-only command to normal members.
         return
 
     targets = await get_broadcast_targets()
@@ -124,8 +114,6 @@ async def groups_command(
         )
         return
 
-    # Match the user's sample: numbered sections, alternating heart accents,
-    # escaped group titles, IDs in monospace, and a branded footer.
     chunks = []
     current = header
     for index, (chat_id, title) in enumerate(targets, start=1):
@@ -153,20 +141,12 @@ async def groups_command(
     chunks.append(current)
 
     for chunk in chunks:
-        await update.message.reply_text(
-            chunk,
-            parse_mode="HTML",
-            disable_web_page_preview=True,
-        )
+        await update.message.reply_text(chunk, parse_mode="HTML", disable_web_page_preview=True)
 
 
-async def broadcast_command(
-    update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
+async def broadcast_command(update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.effective_user:
         return
-
     if update.effective_user.id not in BROADCAST_ADMIN_IDS:
         await update.message.reply_text("⛔ You are not allowed to use this command.")
         return
@@ -185,17 +165,13 @@ async def broadcast_command(
         return
 
     targets = await get_broadcast_targets()
-
     if not targets:
         await update.message.reply_text(
             "📢 Abhi koi GC registered nahi hai. Bot ko GC mein add karke wahan koi message bhejo."
         )
         return
 
-    status = await update.message.reply_text(
-        f"📢 GC broadcast start...\n👥 Groups: {len(targets)}"
-    )
-
+    status = await update.message.reply_text(f"📢 GC broadcast start...\n👥 Groups: {len(targets)}")
     sent = 0
     failed = 0
     sent_groups = []
@@ -210,11 +186,7 @@ async def broadcast_command(
                     message_id=message_to_copy.message_id,
                 )
             else:
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text=text,
-                )
-
+                await context.bot.send_message(chat_id=chat_id, text=text)
             sent += 1
             sent_groups.append(f"{group_title} (ID: {chat_id})")
 
@@ -228,10 +200,7 @@ async def broadcast_command(
                         message_id=message_to_copy.message_id,
                     )
                 else:
-                    await context.bot.send_message(
-                        chat_id=chat_id,
-                        text=text,
-                    )
+                    await context.bot.send_message(chat_id=chat_id, text=text)
                 sent += 1
                 sent_groups.append(f"{group_title} (ID: {chat_id})")
             except Exception as retry_exc:
@@ -246,7 +215,6 @@ async def broadcast_command(
             failure_details.append(f"{group_title} (ID: {chat_id}) — {detail}")
             logger.warning("Broadcast failed for group=%s chat_id=%s: %s", group_title, chat_id, detail)
 
-        # Stay comfortably below Telegram's normal broadcast rate.
         await asyncio.sleep(0.05)
 
     summary = (
@@ -256,15 +224,11 @@ async def broadcast_command(
         f"👥 Total GCs: {len(targets)}"
     )
     if sent_groups:
-        summary += "\n\n✅ Sent to these GCs:\n" + "\n".join(
-            f"• {name[:100]}" for name in sent_groups[:20]
-        )
+        summary += "\n\n✅ Sent to these GCs:\n" + "\n".join(f"• {name[:100]}" for name in sent_groups[:20])
         if len(sent_groups) > 20:
             summary += f"\n• ...and {len(sent_groups) - 20} more"
     if failure_details:
-        summary += "\n\n❌ Failed GCs (with reason):\n" + "\n".join(
-            f"• {detail[:220]}" for detail in failure_details[:10]
-        )
+        summary += "\n\n❌ Failed GCs (with reason):\n" + "\n".join(f"• {detail[:220]}" for detail in failure_details[:10])
         if len(failure_details) > 10:
             summary += f"\n• ...and {len(failure_details) - 10} more"
     await status.edit_text(summary)
@@ -284,6 +248,8 @@ DEFAULT_COMMANDS = [
     BotCommand("helpwords", "Word Game help and commands"),
     BotCommand("daily", "Daily WordSeek (private chat)"),
     BotCommand("pausedaily", "Pause Daily WordSeek"),
+    BotCommand("utag", "Tag group members with your message"),
+    BotCommand("cancel", "Stop the active /utag"),
     BotCommand("seekauth", "Manage users allowed to end WordSeek"),
     BotCommand("score", "View a WordSeek player score"),
     BotCommand("leaderboard", "View the global leaderboard"),
@@ -308,20 +274,12 @@ ADMIN_COMMANDS = DEFAULT_COMMANDS + [
 
 
 async def configure_command_menu(bot):
-    """Show /broadcast only to the owner and the second trusted user."""
-    await bot.set_my_commands(
-        DEFAULT_COMMANDS,
-        scope=BotCommandScopeDefault(),
-    )
-
-    # Show /id in group command menus only, not in private chats.
+    """Configure the default/private and group command menus."""
+    await bot.set_my_commands(DEFAULT_COMMANDS, scope=BotCommandScopeDefault())
     await bot.set_my_commands(
         DEFAULT_COMMANDS + [BotCommand("id", "Show user and group IDs")],
         scope=BotCommandScopeAllGroupChats(),
     )
 
     for user_id in BROADCAST_ADMIN_IDS:
-        await bot.set_my_commands(
-            ADMIN_COMMANDS,
-            scope=BotCommandScopeChat(chat_id=user_id),
-        )
+        await bot.set_my_commands(ADMIN_COMMANDS, scope=BotCommandScopeChat(chat_id=user_id))
