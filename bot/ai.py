@@ -405,11 +405,15 @@ async def generate_reply(
     # GEMINI REQUEST
     # ======================================================
 
-    reply_text = await generate_text(
-        prompt=final_prompt,
-        system_instruction=SYSTEM_PROMPT,
-        temperature=0.8,
-    )
+    try:
+        reply_text = await generate_text(
+            prompt=final_prompt,
+            system_instruction=SYSTEM_PROMPT,
+            temperature=0.8,
+        )
+    except Exception as exc:
+        print(f"[AI CHAT] All providers failed: {exc}")
+        return "AI abhi temporarily unavailable hai. Thodi der baad try karna."
 
     if cache_save_allowed and reply_text != "Sorry, I couldn't generate a response.":
         await asyncio.to_thread(save_cached_response, user_message, reply_text)
