@@ -21,8 +21,6 @@ from config import OWNER_ID
 
 logger = logging.getLogger(__name__)
 
-
-# The owner and this additional trusted Telegram user can use /broadcast.
 BROADCAST_ADMIN_IDS = {
     OWNER_ID,
     8877757796,
@@ -33,7 +31,6 @@ DB_PATH = Path("data/deep_emotions.db")
 
 async def init_broadcast_table():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             """
@@ -44,7 +41,6 @@ async def init_broadcast_table():
             )
             """
         )
-
         cursor = await db.execute("PRAGMA table_info(broadcast_groups)")
         columns = {row[1] for row in await cursor.fetchall()}
         if "title" not in columns:
@@ -52,7 +48,6 @@ async def init_broadcast_table():
                 "ALTER TABLE broadcast_groups "
                 "ADD COLUMN title TEXT NOT NULL DEFAULT 'Unnamed group'"
             )
-
         await db.commit()
 
 
@@ -61,7 +56,6 @@ async def track_group_chat(update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     if not chat or chat.type not in ("group", "supergroup"):
         return
-
     await init_broadcast_table()
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
@@ -86,7 +80,6 @@ async def get_broadcast_targets():
 
 
 async def groups_command(update, context: ContextTypes.DEFAULT_TYPE):
-    """Show the premium registered-groups panel only to approved users in private chat."""
     if not update.message or not update.effective_user or not update.effective_chat:
         return
     if update.effective_chat.type != "private":
@@ -96,7 +89,6 @@ async def groups_command(update, context: ContextTypes.DEFAULT_TYPE):
 
     targets = await get_broadcast_targets()
     total = len(targets)
-
     header = (
         "💗 <b>𝐃𝐄𝐄𝐏 𝐄𝐌𝐎𝐓𝐈𝐎𝐍</b>\n"
         "╭━━━━━━━━━━━━━━━━━━╮\n"
@@ -104,7 +96,6 @@ async def groups_command(update, context: ContextTypes.DEFAULT_TYPE):
         "╰━━━━━━━━━━━━━━━━━━╯\n\n"
         f"📊 Total Groups: <b>{total:02d}</b>\n\n"
     )
-
     if not targets:
         await update.message.reply_text(
             header + "No groups registered yet.\n╰━━━━━━━━━━━━━━━━━━╯\n"
@@ -131,15 +122,10 @@ async def groups_command(update, context: ContextTypes.DEFAULT_TYPE):
                 "╭━━━━━━━━━━━━━━━━━━╮\n\n"
             )
         current += entry
-
-    footer = (
-        "╰━━━━━━━━━━━━━━━━━━╯\n"
-        " 🌸 <b>𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐃𝐞𝐞𝐩 𝐄𝐦𝐨𝐭𝐢𝐨𝐧</b>"
-    )
+    footer = "╰━━━━━━━━━━━━━━━━━━╯\n 🌸 <b>𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐃𝐞𝐞𝐩 𝐄𝐦𝐨𝐭𝐢𝐨𝐧</b>"
     if len(current) + len(footer) <= 3900:
         current += footer
     chunks.append(current)
-
     for chunk in chunks:
         await update.message.reply_text(chunk, parse_mode="HTML", disable_web_page_preview=True)
 
@@ -150,10 +136,8 @@ async def broadcast_command(update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in BROADCAST_ADMIN_IDS:
         await update.message.reply_text("⛔ You are not allowed to use this command.")
         return
-
     message_to_copy = update.message.reply_to_message
     text = " ".join(context.args).strip()
-
     if not message_to_copy and not text:
         await update.message.reply_text(
             "📢 **𝗕ʀᴏᴀᴅᴄᴀsᴛ 𝗚ᴜɪᴅᴇ**\n\n"
@@ -163,42 +147,27 @@ async def broadcast_command(update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown",
         )
         return
-
     targets = await get_broadcast_targets()
     if not targets:
-        await update.message.reply_text(
-            "📢 Abhi koi GC registered nahi hai. Bot ko GC mein add karke wahan koi message bhejo."
-        )
+        await update.message.reply_text("📢 Abhi koi GC registered nahi hai. Bot ko GC mein add karke wahan koi message bhejo.")
         return
-
     status = await update.message.reply_text(f"📢 GC broadcast start...\n👥 Groups: {len(targets)}")
-    sent = 0
-    failed = 0
+    sent = failed = 0
     sent_groups = []
     failure_details = []
-
     for chat_id, group_title in targets:
         try:
             if message_to_copy:
-                await context.bot.copy_message(
-                    chat_id=chat_id,
-                    from_chat_id=update.effective_chat.id,
-                    message_id=message_to_copy.message_id,
-                )
+                await context.bot.copy_message(chat_id=chat_id, from_chat_id=update.effective_chat.id, message_id=message_to_copy.message_id)
             else:
                 await context.bot.send_message(chat_id=chat_id, text=text)
             sent += 1
             sent_groups.append(f"{group_title} (ID: {chat_id})")
-
         except RetryAfter as exc:
             await asyncio.sleep(exc.retry_after)
             try:
                 if message_to_copy:
-                    await context.bot.copy_message(
-                        chat_id=chat_id,
-                        from_chat_id=update.effective_chat.id,
-                        message_id=message_to_copy.message_id,
-                    )
+                    await context.bot.copy_message(chat_id=chat_id, from_chat_id=update.effective_chat.id, message_id=message_to_copy.message_id)
                 else:
                     await context.bot.send_message(chat_id=chat_id, text=text)
                 sent += 1
@@ -208,21 +177,13 @@ async def broadcast_command(update, context: ContextTypes.DEFAULT_TYPE):
                 detail = f"{type(retry_exc).__name__}: {retry_exc}"
                 failure_details.append(f"{group_title} (ID: {chat_id}) — {detail}")
                 logger.warning("Broadcast retry failed for group=%s chat_id=%s: %s", group_title, chat_id, detail)
-
         except Exception as exc:
             failed += 1
             detail = f"{type(exc).__name__}: {exc}"
             failure_details.append(f"{group_title} (ID: {chat_id}) — {detail}")
             logger.warning("Broadcast failed for group=%s chat_id=%s: %s", group_title, chat_id, detail)
-
         await asyncio.sleep(0.05)
-
-    summary = (
-        "📢 GC Broadcast completed\n\n"
-        f"✅ Sent: {sent}\n"
-        f"❌ Failed: {failed}\n"
-        f"👥 Total GCs: {len(targets)}"
-    )
+    summary = f"📢 GC Broadcast completed\n\n✅ Sent: {sent}\n❌ Failed: {failed}\n👥 Total GCs: {len(targets)}"
     if sent_groups:
         summary += "\n\n✅ Sent to these GCs:\n" + "\n".join(f"• {name[:100]}" for name in sent_groups[:20])
         if len(sent_groups) > 20:
@@ -248,8 +209,6 @@ DEFAULT_COMMANDS = [
     BotCommand("helpwords", "Word Game help and commands"),
     BotCommand("daily", "Daily WordSeek (private chat)"),
     BotCommand("pausedaily", "Pause Daily WordSeek"),
-    BotCommand("utag", "Tag group members with your message"),
-    BotCommand("cancel", "Stop the active /utag"),
     BotCommand("seekauth", "Manage users allowed to end WordSeek"),
     BotCommand("score", "View a WordSeek player score"),
     BotCommand("leaderboard", "View the global leaderboard"),
@@ -280,6 +239,5 @@ async def configure_command_menu(bot):
         DEFAULT_COMMANDS + [BotCommand("id", "Show user and group IDs")],
         scope=BotCommandScopeAllGroupChats(),
     )
-
     for user_id in BROADCAST_ADMIN_IDS:
         await bot.set_my_commands(ADMIN_COMMANDS, scope=BotCommandScopeChat(chat_id=user_id))
