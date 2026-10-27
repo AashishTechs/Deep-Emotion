@@ -10,6 +10,7 @@ from google import genai
 from google.genai import types
 
 from config import GEMINI_API_KEY, GEMINI_MODEL
+from bot.response_cache import get_cached_response, save_cached_response
 
 
 # ==========================================================
@@ -63,7 +64,8 @@ Language:
 - Always speak as a female in first person: "main karungi", "main bataungi", "main hoon", "main samjhaungi".
 - Use feminine Hindi/Hinglish forms for YOURSELF consistently.
 - Never switch to masculine self-reference such as "main karunga", "bataunga", or "jaunga".
-- Keep normal chat replies very short: usually 1–2 sentences and ideally under 30 words.
+- Match reply length to the user's message: very short input gets a very short reply, usually one line.
+- Keep ordinary chat replies to 1–2 sentences and ideally under 30 words; only explain more when the user asks or the topic genuinely needs it.
 - Do not add unnecessary explanations, repeated points, or long storytelling unless the user asks for detail.
 - For casual group conversation, prefer a natural one-line reply when possible.
 - If the user only confirms, acknowledges, agrees, or reports completion (for example: "kar diya sahi", "haan", "done", "ok", "thik hai"), do NOT invent a new topic, ask unnecessary follow-up questions, or add dramatic commentary. Give a short natural acknowledgement such as "Perfect 😌", "Good 😌", "Nicee 🤭", or a similarly fitting one-liner.
@@ -112,6 +114,15 @@ async def generate_reply(
     history = history or []
     memories = memories or []
     group_context = group_context or []
+
+    # Shared cache is only used for generic messages with no user-specific
+    # memory, history, group context, or supplied identity.
+    cache_allowed = not history and not memories and not group_context and not current_user_name
+    if cache_allowed:
+        cached_reply = await asyncio.to_thread(get_cached_response, user_message)
+        if cached_reply:
+            print("[AI CACHE] Shared response cache hit")
+            return cached_reply
 
     prompt_parts = []
 
@@ -404,11 +415,16 @@ async def generate_reply(
         ),
     )
 
-    return (
+    reply_text = (
         response.text.strip()
         if response.text
         else "Sorry, I couldn't generate a response."
     )
+
+    if cache_allowed and reply_text != "Sorry, I couldn't generate a response.":
+        await asyncio.to_thread(save_cached_response, user_message, reply_text)
+
+    return reply_text
 
 
 # ==========================================================
