@@ -10,6 +10,7 @@ from google import genai
 from google.genai import types
 
 from config import GEMINI_API_KEY, GEMINI_MODEL
+from bot.ai_providers import generate_text
 from bot.response_cache import get_cached_response, save_cached_response
 
 
@@ -406,20 +407,10 @@ async def generate_reply(
     # GEMINI REQUEST
     # ======================================================
 
-    response = await asyncio.to_thread(
-        client.models.generate_content,
-        model=GEMINI_MODEL,
-        contents=final_prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            temperature=0.8,
-        ),
-    )
-
-    reply_text = (
-        response.text.strip()
-        if response.text
-        else "Sorry, I couldn't generate a response."
+    reply_text = await generate_text(
+        prompt=final_prompt,
+        system_instruction=SYSTEM_PROMPT,
+        temperature=0.8,
     )
 
     if cache_save_allowed and reply_text != "Sorry, I couldn't generate a response.":
